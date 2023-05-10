@@ -99,6 +99,8 @@ export class HiveMultisigSDK {
               }
             },
           ]);
+        } else {
+          reject('error while signing buffer');
         }
       } catch (error) {
         throw error;
