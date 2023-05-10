@@ -1,5 +1,6 @@
 import { KeychainKeyTypes } from "hive-keychain-commons";
 import { SignatureRequest } from "./signature-request/signature-request.entity";
+import { KeychainOptions } from 'keychain-sdk';
 
 export enum SocketMessageCommand {
   SIGNER_CONNECT = "signer_connect",
@@ -11,6 +12,11 @@ export enum SocketMessageCommand {
   TRANSACTION_BROADCASTED_NOTIFICATION = "transaction_broadcasted_notification",
 }
 
+export interface MultisigOptions{
+  KeychainOptions?: KeychainOptions,
+  SocketAddress: string,
+  ClientAddress: string
+}
 export interface SocketMessage {
   command: string;
   payload: SocketMessagePayload;

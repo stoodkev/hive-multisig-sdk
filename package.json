@@ -3,6 +3,7 @@
     "@hiveio/dhive": "^1.2.6",
     "hive-keychain-commons": "github:hive-keychain/hive-keychain-commons",
     "keychain-sdk": "^0.3.0",
+    "socket.io-client": "^4.6.1",
     "typeorm": "^0.3.15"
   },
   "devDependencies": {
