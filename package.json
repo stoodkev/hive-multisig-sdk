@@ -26,5 +26,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/carlodizon03"
+  },
+
+  "publishConfig": {
+   "@cardizon03:registry": "https://npm.pkg.github.com"
   }
-}
+ }
