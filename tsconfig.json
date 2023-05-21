@@ -1,14 +1,18 @@
 {
     "compilerOptions": {
+      "jsx": "react",
       "lib": ["es5", "es6", "dom"],
       "target": "es5",
       "module": "commonjs",
       "moduleResolution": "node",
-      "outDir": "./build",
+      "outDir": "./dist",
       "emitDecoratorMetadata": true,
       "experimentalDecorators": true,
       "esModuleInterop": true,
-      "sourceMap": true
-    }
+      "sourceMap": true,
+      "allowJs": true,
+    },
+    "include": ["src/**/*", "package.json"],
+    "exclude": ["dist"]
   }
   

@@ -57,7 +57,7 @@ export class HiveMultisigSDK {
    * const multisig = new HiveMultisigSDK(window);
    * const username = 'hive.user';
    * try {
-   *       const signerConnectResponse = multisig.signerConnectMessage(
+   *       const signerConnectResponse = multisig.singleSignerConnect(
    *           username,
    *           KeychainKeyTypes.posting,
    *       );
@@ -70,7 +70,7 @@ export class HiveMultisigSDK {
    * @returns
    */
 
-  signerConnectMessage = async (
+  singleSignerConnect = async (
     to: string,
     keyType: KeychainKeyTypes,
   ): Promise<SignerConnectResponse> => {
@@ -85,26 +85,54 @@ export class HiveMultisigSDK {
 
         if (signBuffer.success) {
           const signerConnectParams: SignerConnectMessage = {
-            publicKey: signBuffer.publicKey,
+            publicKey: signBuffer.publicKey!,
             message: JSON.stringify(signBuffer.result),
             username: signBuffer.data.username,
           };
-          this.socket.emit(SocketMessageCommand.SIGNER_CONNECT, [
-            signerConnectParams,
+          this.socket.emit(SocketMessageCommand.SIGNER_CONNECT, 
+            [signerConnectParams], 
             (signerConnectResponse: SignerConnectResponse) => {
-              if (signerConnectResponse.errors) {
-                reject(signerConnectResponse);
-              } else {
-                resolve(signerConnectResponse);
-              }
-            },
-          ]);
+            if (signerConnectResponse.errors) {
+              reject(signerConnectResponse);
+            } else {
+              resolve(signerConnectResponse);
+            }
+          });
         } else {
-          reject('error while signing buffer');
+          reject('Error while signing buffer');
         }
       } catch (error) {
-        throw error;
+        const errorMessage = "Error occurred during singleSignerConnect: " + error.message;
+        reject(new Error(errorMessage));
       }
     });
   };
+
+/**
+ * @description
+ * 
+ * @example
+ * import {HiveMultisigSDK} from "hive-multisig-sdk";
+ * const multisig = new HiveMultisigSDK(window);
+ * 
+ * 
+ * @param message
+ * 
+ */
+  sendSignatureRequest = async( message: RequestSignatureMessage ): Promise<string> => {
+
+    return new Promise (async (resolve, reject) => {
+      try{
+          this.socket.emit(SocketMessageCommand.REQUEST_SIGNATURE, message, (response:string) =>{
+            resolve(response);
+          })
+        } catch(error){
+          const errorMessage = "Error occured during sendSignatureRequest: " + error.message;
+          reject(new Error(errorMessage));
+        }
+    }) 
+  }
+
+ 
 }
+
