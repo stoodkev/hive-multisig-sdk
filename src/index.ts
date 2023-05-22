@@ -21,6 +21,7 @@ import { KeychainOptions, KeychainSDK, SignBuffer } from 'keychain-sdk';
 import { Socket, io } from 'socket.io-client';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { rejects } from 'assert';
+import { resolve } from 'path';
 
 /**
  * @description
@@ -52,13 +53,15 @@ export class HiveMultisigSDK {
   /**
    * @description
    * This function is called to connect to a single account or key before making a multi-signature transaction.
-   *
+   * 
+   * Under the hood, this function will call the window.hive_keychain.requestSignBuffer() using KeychainSDK. 
+   * 
    * @example
    * import {HiveMultisigSDK} from "hive-multisig-sdk";
    * const multisig = new HiveMultisigSDK(window);
    * const username = 'hive.user';
    * try {
-   *       const signerConnectResponse = multisig.singleSignerConnect(
+   *       const signerConnectResponse = await multisig.singleSignerConnect(
    *           username,
    *           KeychainKeyTypes.posting,
    *       );
@@ -68,7 +71,7 @@ export class HiveMultisigSDK {
    *   }
    * @param to username or key
    * @param keyType KeychainKeyTypes
-   * @returns
+   * @returns SignerConnectResponse
    */
 
   singleSignerConnect = async (
@@ -85,7 +88,6 @@ export class HiveMultisigSDK {
         } as SignBuffer);
 
         if (signBuffer.success) {
-          console.log(signBuffer);
           const signerConnectParams: SignerConnectMessage = {
             publicKey: signBuffer.publicKey!,
             message: JSON.stringify(signBuffer.result).replace(`"`, ''),
@@ -97,9 +99,8 @@ export class HiveMultisigSDK {
             (signerConnectResponse: SignerConnectResponse) => {
               if (signerConnectResponse.errors) {
                 reject(signerConnectResponse);
-              } else {
-                resolve(signerConnectResponse);
-              }
+              } 
+              resolve(signerConnectResponse);
             },
           );
         } else {
@@ -112,6 +113,37 @@ export class HiveMultisigSDK {
       }
     });
   };
+
+
+  /**
+   * @description
+   * This function is called to connect to multiple accounts or keys before making a multi-signature transaction.
+   * 
+   * Unlike singleSignerConnect, it is required to sign each message using KeychainSDK.signBuffer() first outside of this function.  
+   * 
+   * @param messages array of signed connect messages
+   * @returns SignerConnectResponse
+   */
+  multipleSignerConnect = async (messages: SignerConnectMessage[]): Promise<SignerConnectResponse> =>{
+    return new Promise(async (resolve,reject) => {
+      try{
+        this.socket.emit(SocketMessageCommand.SIGNER_CONNECT,
+            messages,
+            (signerConnectResponse: SignerConnectResponse) =>{
+              if(signerConnectResponse.errors){
+                reject(signerConnectResponse);
+              }
+              resolve(signerConnectResponse);
+            }
+          )
+      }
+      catch(error:any){
+        const errorMessage =
+        'Error occurred during multipleSignerConnect: ' + error.message;
+      reject(new Error(errorMessage));
+      }
+    })
+  }
 
   /**
    * @description
