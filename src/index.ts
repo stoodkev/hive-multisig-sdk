@@ -179,6 +179,61 @@ export class HiveMultisigSDK {
     });
   };
 
+  /**
+   * @description
+   *
+   * @param message
+   * @returns
+   */
+  signTransaction = async (
+    message: SignTransactionMessage,
+  ): Promise<string[]> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        this.socket.emit(
+          SocketMessageCommand.SIGN_TRANSACTION,
+          message,
+          (response: string[]) => {
+            resolve(response);
+          },
+        );
+      } catch (error: any) {
+        reject(
+          new Error('Error occured during signTransaction: ' + error.message),
+        );
+      }
+    });
+  };
+
+  /**
+   * @description
+   *
+   * @param message
+   * @returns
+   */
+  notifyTransactionBroadcasted = async (
+    message: NotifyTxBroadcastedMessage,
+  ): Promise<string> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        this.socket.emit(
+          SocketMessageCommand.NOTIFY_TRANSACTION_BROADCASTED,
+          message,
+          () => {
+            resolve('Backend has been notified of broadcast.');
+          },
+        );
+      } catch (error: any) {
+        reject(
+          new Error(
+            'Error occured during notifyTransactionBroadcased: ' +
+              error.message,
+          ),
+        );
+      }
+    });
+  };
+
   verifyKey = async (message: SignerConnectMessage): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
       HiveUtils.getClient()
@@ -188,11 +243,11 @@ export class HiveMultisigSDK {
             const signature = Signature.fromString(message.message);
             const key = PublicKey.fromString(message.publicKey);
             if (key.verify(cryptoUtils.sha256(message.username), signature)) {
-              return true;
+              resolve(true);
             }
-            throw new Error('The signature could not be verified');
+            reject(new Error('The signature could not be verified'));
           }
-          throw new Error('The signature could not be verified');
+          reject(new Error('The signature could not be verified'));
         });
     });
   };
