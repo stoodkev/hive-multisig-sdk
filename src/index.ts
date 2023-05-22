@@ -22,6 +22,8 @@ import { Socket, io } from 'socket.io-client';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { rejects } from 'assert';
 import { resolve } from 'path';
+import { HiveUtils } from './utils/hive.utils';
+import { PublicKey, Signature, cryptoUtils } from '@hiveio/dhive';
 
 /**
  * @description
@@ -53,9 +55,9 @@ export class HiveMultisigSDK {
   /**
    * @description
    * This function is called to connect to a single account or key before making a multi-signature transaction.
-   * 
-   * Under the hood, this function will call the window.hive_keychain.requestSignBuffer() using KeychainSDK. 
-   * 
+   *
+   * Under the hood, this function will call the window.hive_keychain.requestSignBuffer() using KeychainSDK.
+   *
    * @example
    * import {HiveMultisigSDK} from "hive-multisig-sdk";
    * const multisig = new HiveMultisigSDK(window);
@@ -99,7 +101,7 @@ export class HiveMultisigSDK {
             (signerConnectResponse: SignerConnectResponse) => {
               if (signerConnectResponse.errors) {
                 reject(signerConnectResponse);
-              } 
+              }
               resolve(signerConnectResponse);
             },
           );
@@ -114,36 +116,37 @@ export class HiveMultisigSDK {
     });
   };
 
-
   /**
    * @description
    * This function is called to connect to multiple accounts or keys before making a multi-signature transaction.
-   * 
-   * Unlike singleSignerConnect, it is required to sign each message using KeychainSDK.signBuffer() first outside of this function.  
-   * 
+   *
+   * Unlike singleSignerConnect, it is required to sign each message using KeychainSDK.signBuffer() first outside of this function.
+   *
    * @param messages array of signed connect messages
    * @returns SignerConnectResponse
    */
-  multipleSignerConnect = async (messages: SignerConnectMessage[]): Promise<SignerConnectResponse> =>{
-    return new Promise(async (resolve,reject) => {
-      try{
-        this.socket.emit(SocketMessageCommand.SIGNER_CONNECT,
-            messages,
-            (signerConnectResponse: SignerConnectResponse) =>{
-              if(signerConnectResponse.errors){
-                reject(signerConnectResponse);
-              }
-              resolve(signerConnectResponse);
+  multipleSignerConnect = async (
+    messages: SignerConnectMessage[],
+  ): Promise<SignerConnectResponse> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        this.socket.emit(
+          SocketMessageCommand.SIGNER_CONNECT,
+          messages,
+          (signerConnectResponse: SignerConnectResponse) => {
+            if (signerConnectResponse.errors) {
+              reject(signerConnectResponse);
             }
-          )
-      }
-      catch(error:any){
+            resolve(signerConnectResponse);
+          },
+        );
+      } catch (error: any) {
         const errorMessage =
-        'Error occurred during multipleSignerConnect: ' + error.message;
-      reject(new Error(errorMessage));
+          'Error occurred during multipleSignerConnect: ' + error.message;
+        reject(new Error(errorMessage));
       }
-    })
-  }
+    });
+  };
 
   /**
    * @description
@@ -173,6 +176,24 @@ export class HiveMultisigSDK {
           'Error occured during sendSignatureRequest: ' + error.message;
         reject(new Error(errorMessage));
       }
+    });
+  };
+
+  verifyKey = async (message: SignerConnectMessage): Promise<boolean> => {
+    return new Promise(async (resolve, reject) => {
+      HiveUtils.getClient()
+        .keys.getKeyReferences([message.publicKey!])
+        .then((result) => {
+          if (result.accounts?.[0]?.includes(message.username)) {
+            const signature = Signature.fromString(message.message);
+            const key = PublicKey.fromString(message.publicKey);
+            if (key.verify(cryptoUtils.sha256(message.username), signature)) {
+              return true;
+            }
+            throw new Error('The signature could not be verified');
+          }
+          throw new Error('The signature could not be verified');
+        });
     });
   };
 
