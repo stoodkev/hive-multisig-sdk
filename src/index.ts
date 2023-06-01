@@ -17,9 +17,8 @@ import {
   RefuseTransactionMessage,
   MultisigOptions,
   SignatureRequestCallback,
-  DecodedTransactionMessage,
-  DecodedTransaction,
   ISignTransaction,
+  IEncodeTransaction,
 } from './interfaces/socket-message.interface';
 import { KeychainOptions, KeychainSDK, SignBuffer } from 'keychain-sdk';
 import { Socket, io } from 'socket.io-client';
@@ -258,14 +257,47 @@ export class HiveMultisigSDK {
     });
   };
 
+  /**
+   * @description
+   * Encodes the transaction data using the keychain.
+   *
+   * @param data The object containing transaction encoding details.
+   * @returns A Promise that resolves with the encoded transaction as a string.
+   */
+  encodeTransaction = (data: IEncodeTransaction): Promise<string> => {
+    return new Promise<string>(async (resolve, reject) => {
+      try {
+        const signature = await this.keychain.signTx({
+          username: data.username,
+          tx: data.transaction,
+          method: data.method,
+        });
+  
+        if (!signature.success) {
+          reject(new Error("Failed to sign transaction during transaction encoding"));
+          return;
+        }
+        const signedTransaction = signature.result;
+        const encodedTransaction = await this.keychain.encode({
+          username: data.username,
+          receiver: data.receiver,
+          message: `#${JSON.stringify(signedTransaction)}`,
+          method: data.method,
+        });
+  
+        if (!encodedTransaction.success) {
+          reject(new Error("Failed to encode transaction"));
+          return;
+        }
+  
+        resolve(encodedTransaction.message);
+      } catch (error: any) {
+        reject(new Error("Error occurred during encodeTransaction: " + error.message));
+      }
+    });
+  };
 
-  encode = async(): Promise<void> => {
-    return new Promise(async (resolve,reject)=>{
-        //initmultisigtransaction
-        //before  sendRequestSignatureMessage
-    })
-  }
-
+  
   /**
    * @description
    * Decodes the encrypted transaction for the signature request.
