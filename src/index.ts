@@ -16,14 +16,17 @@ import {
   SignTransactionMessage,
   RefuseTransactionMessage,
   MultisigOptions,
-} from './interfaces/multisig-backend/socket-message.interface';
+  SignatureRequestCallback,
+  DecodedTransactionMessage,
+  DecodedTransaction,
+  ISignTransaction,
+} from './interfaces/socket-message.interface';
 import { KeychainOptions, KeychainSDK, SignBuffer } from 'keychain-sdk';
 import { Socket, io } from 'socket.io-client';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
-import { rejects } from 'assert';
-import { resolve } from 'path';
 import { HiveUtils } from './utils/hive.utils';
-import { PublicKey, Signature, cryptoUtils } from '@hiveio/dhive';
+import { PublicKey, Signature, Transaction, cryptoUtils } from '@hiveio/dhive';
+import { SignatureRequest } from './interfaces/signature-request';
 
 /**
  * @description
@@ -43,13 +46,13 @@ export class HiveMultisigSDK {
     this.keychain = new KeychainSDK(this.window);
     if (!options) {
       this.options = {
-        SocketAddress: 'http://localhost:5001',
-        ClientAddress: 'https://api.deathwing.me',
+        socketAddress: 'http://localhost:5001',
+        clientAddress: 'https://api.deathwing.me',
       };
     } else {
       this.options = options;
     }
-    this.socket = io(this.options.SocketAddress);
+    this.socket = io(this.options.socketAddress);
   }
 
   /**
@@ -150,14 +153,11 @@ export class HiveMultisigSDK {
 
   /**
    * @description
-   *
-   * @example
-   * import {HiveMultisigSDK} from "hive-multisig-sdk";
-   * const multisig = new HiveMultisigSDK(window);
+   * 
    *
    *
    * @param message
-   *
+   * @return 
    */
   sendSignatureRequest = async (
     message: RequestSignatureMessage,
@@ -179,24 +179,47 @@ export class HiveMultisigSDK {
     });
   };
 
-  /**
-   * @description
-   *
-   * @param message
-   * @returns
-   */
+/**
+ * @description
+ *
+ * @param message .
+ * @returns.
+ */
   signTransaction = async (
-    message: SignTransactionMessage,
+    data:ISignTransaction
   ): Promise<string[]> => {
     return new Promise(async (resolve, reject) => {
       try {
-        this.socket.emit(
-          SocketMessageCommand.SIGN_TRANSACTION,
-          message,
-          (response: string[]) => {
-            resolve(response);
-          },
-        );
+          const signature = await this.keychain.signTx(
+            {
+              username: data.username,
+              tx: data.decodedTransaction,
+              method: data.method
+            }
+          );
+          if(signature.success){
+            try{
+              const signedTransaction = signature.result;
+              const signTransactionMessage: SignTransactionMessage = {
+                signature: signedTransaction.signatures[ signedTransaction.signatures.length - 1],
+                signerId: data.signerId,
+                signatureRequestId: data.signatureRequestId
+              }
+              this.socket.emit(
+                SocketMessageCommand.SIGN_TRANSACTION,
+                signTransactionMessage,
+                (response: string[]) => {
+                  resolve(response);
+                },
+              );
+            }
+            catch(error: any) {
+              reject(
+                new Error('Error occured during signTransaction: ' + error.message),
+              );
+            }
+          }
+          reject(signature.error);
       } catch (error: any) {
         reject(
           new Error('Error occured during signTransaction: ' + error.message),
@@ -205,12 +228,13 @@ export class HiveMultisigSDK {
     });
   };
 
-  /**
-   * @description
-   *
-   * @param message
-   * @returns
-   */
+/**
+ * @description
+ * Notifies the backend about a transaction being broadcasted.
+ *
+ * @param message The NotifyTxBroadcastedMessage containing signatureRequestId.
+ * @returns A Promise that resolves with a string message indicating successful notification.
+ */
   notifyTransactionBroadcasted = async (
     message: NotifyTxBroadcastedMessage,
   ): Promise<string> => {
@@ -234,6 +258,59 @@ export class HiveMultisigSDK {
     });
   };
 
+
+  encode = async(): Promise<void> => {
+    return new Promise(async (resolve,reject)=>{
+        //initmultisigtransaction
+        //before  sendRequestSignatureMessage
+    })
+  }
+
+  /**
+   * @description
+   * Decodes the encrypted transaction for the signature request.
+   * 
+   * @param signatureRequest 
+   * @param username 
+   * @param publicKey 
+   * @returns A Promise that resolves with the decoded transaction as a Transaction object.
+   */
+  decodeTransaction = async(signatureRequest:SignatureRequest, username:string, publicKey:string): Promise<Transaction> => {
+    return new Promise(async (resolve,reject)=>{
+
+      if(!signatureRequest){reject(new Error("You passed an empty signatureRequest in decodeTransaction."));}
+      const signer = signatureRequest.signers.find((s)=> s.publicKey === publicKey);
+      if(!signer){reject(new Error("The publikKey cannot be found in the list of signers."))}
+      try{
+        const decodedTx = await this.keychain.decode(
+          { username,
+            message: signer.encryptedTransaction,
+            method: signatureRequest.keyType
+          }
+        );
+        if(decodedTx.success){
+          const data = JSON.stringify(decodedTx.result).replace("#","");
+          if(typeof data === 'object' && data !== null){
+
+           
+            resolve(JSON.parse(data) as Transaction); 
+          }
+          reject(new Error("Cannot parse transaction string. Invalid transaction format."));
+        }
+      }catch(error:any){
+        reject(new Error("An error occured during decodeTransaction: "+ error.message));
+      }
+    }
+    )
+  }
+
+/**
+ * @description
+ * Verifies the key and signature of a signer's connection message.
+ *
+ * @param message The signer connection message containing the public key, username, and signature.
+ * @returns A Promise that resolves with a boolean indicating whether the key and signature are valid.
+ */
   verifyKey = async (message: SignerConnectMessage): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
       HiveUtils.getClient()
@@ -252,19 +329,49 @@ export class HiveMultisigSDK {
     });
   };
 
-  ping = async (setPong: Function): Promise<string> => {
-    this.socket.on('pong', () => {
-      setPong(new Date().toISOString());
-    });
-    return new Promise(async (resolve, reject) => {
-      try {
-        this.socket.emit('ping', (response: string) => {
-          console.log(response);
-          resolve(response);
+
+ /**
+ * @description
+ * Subscribes to signature requests and invokes the provided callback function when a signature request is received.
+ *
+ * @param callback The callback function to be invoked with the signature request.
+ * @returns A Promise that resolves with a string message indicating successful subscription.
+ */
+  subscribeToSignRequests = (callback: SignatureRequestCallback): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
+      try{
+        this.socket.on(SocketMessageCommand.REQUEST_SIGN_TRANSACTION, (signatureRequest: SignatureRequest) => {
+          callback(signatureRequest);
         });
-      } catch (error: any) {
-        reject(new Error('Error during ping.'));
+        resolve("Subscribed to signature requests");
+      }catch(error:any){
+        reject(new Error(
+          "Error occured when trying to subscribe to signer requests: " + error.message)
+          );
       }
     });
   };
+
+  /**
+ * @description
+ * Subscribes to broadcasted transactions and invokes the provided callback function when a transaction has been broadcasted.
+ *
+ * @param callback The callback function to be invoked with the signature request.
+ * @returns A Promise that resolves with a string message indicating successful subscription.
+ */
+  subscribeToBroadcastedTransactions = (callback:SignatureRequestCallback): Promise<string> => {
+    return new Promise<string>((resolve, reject) => {
+      try{
+        this.socket.on(SocketMessageCommand.TRANSACTION_BROADCASTED_NOTIFICATION, (signatureRequest: SignatureRequest) => {
+          callback(signatureRequest);
+        });
+        resolve("Subscribed to broadcasted transactions");
+      }catch(error:any){
+        reject(new Error(
+          "Error occured when trying to subscribe to broadcasted transactions: " + error.message
+        ));
+      }
+    });
+  };
+  
 }

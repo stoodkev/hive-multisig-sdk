@@ -1,6 +1,7 @@
 import { KeychainKeyTypes } from "hive-keychain-commons";
-import { SignatureRequest } from "./signature-request/signature-request.entity";
+import { SignatureRequest } from "./signature-request";
 import { KeychainOptions } from 'keychain-sdk';
+import { Signature, Transaction } from "@hiveio/dhive";
 
 export enum SocketMessageCommand {
   SIGNER_CONNECT = "signer_connect",
@@ -13,9 +14,9 @@ export enum SocketMessageCommand {
 }
 
 export interface MultisigOptions{
-  KeychainOptions?: KeychainOptions,
-  SocketAddress: string,
-  ClientAddress: string
+  keychainOptions?: KeychainOptions,
+  socketAddress: string,
+  clientAddress: string
 }
 export interface SocketMessage {
   command: string;
@@ -93,3 +94,13 @@ export interface SignTransactionMessage extends SocketMessagePayload {
 export interface RefuseTransactionMessage extends SocketMessagePayload {
   signerId: number;
 }
+
+
+export interface ISignTransaction{
+  decodedTransaction: Transaction;
+  signerId: number;
+  signatureRequestId: number;
+  username: string;
+  method: KeychainKeyTypes;
+}
+export type SignatureRequestCallback = (message: SignatureRequest) => void;

@@ -1,0 +1,13 @@
+import { KeychainKeyTypes } from "hive-keychain-commons";
+import { Signer } from "./signer";
+
+export class SignatureRequest {
+  id: number;
+  expirationDate: Date;
+  threshold: number;
+  keyType: KeychainKeyTypes;
+  initiator: string;
+  locked: boolean;
+  broadcasted?: boolean;
+  signers: Signer[];
+}
