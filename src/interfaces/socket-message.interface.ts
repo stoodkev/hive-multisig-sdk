@@ -103,4 +103,12 @@ export interface ISignTransaction{
   username: string;
   method: KeychainKeyTypes;
 }
+
+export interface IEncodeTransaction {
+  username: string;
+  transaction: Transaction;
+  method: KeychainKeyTypes;
+  receiver: string;
+}
+
 export type SignatureRequestCallback = (message: SignatureRequest) => void;
