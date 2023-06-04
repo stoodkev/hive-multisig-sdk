@@ -102,13 +102,15 @@ export class HiveMultisigSDK {
             [signerConnectParams],
             (signerConnectResponse: SignerConnectResponse) => {
               if (signerConnectResponse.errors) {
-                reject(signerConnectResponse);
+                reject(signerConnectResponse.errors);
               }
               resolve(signerConnectResponse);
             },
           );
         } else {
-          reject('Error while signing buffer');
+          reject(
+            new Error('Error while signing buffer during singleSignerConnect'),
+          );
         }
       } catch (error: any) {
         const errorMessage =
