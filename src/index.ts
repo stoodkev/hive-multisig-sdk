@@ -396,8 +396,8 @@ export class HiveMultisigSDK {
    */
   subscribeToSignRequests = (
     callback: SignatureRequestCallback,
-  ): Promise<string> => {
-    return new Promise<string>((resolve, reject) => {
+  ): Promise<boolean> => {
+    return new Promise<boolean>((resolve, reject) => {
       try {
         this.socket.on(
           SocketMessageCommand.REQUEST_SIGN_TRANSACTION,
@@ -405,7 +405,7 @@ export class HiveMultisigSDK {
             callback(signatureRequest);
           },
         );
-        resolve('Subscribed to signature requests');
+        resolve(true);
       } catch (error: any) {
         reject(
           new Error(
