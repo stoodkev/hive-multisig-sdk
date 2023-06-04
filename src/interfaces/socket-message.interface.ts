@@ -1,22 +1,22 @@
-import { KeychainKeyTypes } from "hive-keychain-commons";
-import { SignatureRequest } from "./signature-request";
+import { KeychainKeyTypes } from 'hive-keychain-commons';
+import { SignatureRequest } from './signature-request';
 import { KeychainOptions } from 'keychain-sdk';
-import { Signature, Transaction } from "@hiveio/dhive";
+import { Signature, Transaction } from '@hiveio/dhive';
 
 export enum SocketMessageCommand {
-  SIGNER_CONNECT = "signer_connect",
-  REQUEST_SIGNATURE = "request_signature",
-  REQUEST_SIGN_TRANSACTION = "request_sign_transaction",
-  SIGN_TRANSACTION = "sign_transaction",
-  REQUEST_LOCK = "request_lock",
-  NOTIFY_TRANSACTION_BROADCASTED = "notify_transaction_broadcasted",
-  TRANSACTION_BROADCASTED_NOTIFICATION = "transaction_broadcasted_notification",
+  SIGNER_CONNECT = 'signer_connect',
+  REQUEST_SIGNATURE = 'request_signature',
+  REQUEST_SIGN_TRANSACTION = 'request_sign_transaction',
+  SIGN_TRANSACTION = 'sign_transaction',
+  REQUEST_LOCK = 'request_lock',
+  NOTIFY_TRANSACTION_BROADCASTED = 'notify_transaction_broadcasted',
+  TRANSACTION_BROADCASTED_NOTIFICATION = 'transaction_broadcasted_notification',
 }
 
-export interface MultisigOptions{
-  keychainOptions?: KeychainOptions,
-  socketAddress: string,
-  clientAddress: string
+export interface MultisigOptions {
+  keychainOptions?: KeychainOptions;
+  socketAddress: string;
+  clientAddress: string;
 }
 export interface SocketMessage {
   command: string;
@@ -29,6 +29,10 @@ export interface NotifyTxBroadcastedMessage extends SocketMessagePayload {
   signatureRequestId: number;
 }
 
+export interface SignerConnect {
+  username: string;
+  keyType: KeychainKeyTypes;
+}
 export interface SignerConnectMessage extends SocketMessagePayload {
   publicKey: string;
   message: string;
@@ -95,8 +99,7 @@ export interface RefuseTransactionMessage extends SocketMessagePayload {
   signerId: number;
 }
 
-
-export interface ISignTransaction{
+export interface ISignTransaction {
   decodedTransaction: Transaction;
   signerId: number;
   signatureRequestId: number;

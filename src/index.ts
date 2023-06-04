@@ -19,8 +19,9 @@ import {
   SignatureRequestCallback,
   ISignTransaction,
   IEncodeTransaction,
+  SignerConnect,
 } from './interfaces/socket-message.interface';
-import { KeychainOptions, KeychainSDK, SignBuffer } from 'keychain-sdk';
+import { KeychainSDK, SignBuffer } from 'keychain-sdk';
 import { Socket, io } from 'socket.io-client';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { HiveUtils } from './utils/hive.utils';
@@ -79,15 +80,14 @@ export class HiveMultisigSDK {
    */
 
   singleSignerConnect = async (
-    to: string,
-    keyType: KeychainKeyTypes,
+    signer: SignerConnect,
   ): Promise<SignerConnectResponse> => {
     return new Promise(async (resolve, reject) => {
       try {
         const signBuffer = await this.keychain.signBuffer({
-          username: to,
-          message: to,
-          method: keyType,
+          username: signer.username,
+          message: signer.username,
+          method: signer.keyType,
           title: 'Send Signer Connect Message',
         } as SignBuffer);
 
@@ -152,11 +152,11 @@ export class HiveMultisigSDK {
 
   /**
    * @description
-   * 
+   *
    *
    *
    * @param message
-   * @return 
+   * @return
    */
   sendSignatureRequest = async (
     message: RequestSignatureMessage,
@@ -178,47 +178,47 @@ export class HiveMultisigSDK {
     });
   };
 
-/**
- * @description
- *
- * @param message .
- * @returns.
- */
-  signTransaction = async (
-    data:ISignTransaction
-  ): Promise<string[]> => {
+  /**
+   * @description
+   *
+   * @param message .
+   * @returns.
+   */
+  signTransaction = async (data: ISignTransaction): Promise<string[]> => {
     return new Promise(async (resolve, reject) => {
       try {
-          const signature = await this.keychain.signTx(
-            {
-              username: data.username,
-              tx: data.decodedTransaction,
-              method: data.method
-            }
-          );
-          if(signature.success){
-            try{
-              const signedTransaction = signature.result;
-              const signTransactionMessage: SignTransactionMessage = {
-                signature: signedTransaction.signatures[ signedTransaction.signatures.length - 1],
-                signerId: data.signerId,
-                signatureRequestId: data.signatureRequestId
-              }
-              this.socket.emit(
-                SocketMessageCommand.SIGN_TRANSACTION,
-                signTransactionMessage,
-                (response: string[]) => {
-                  resolve(response);
-                },
-              );
-            }
-            catch(error: any) {
-              reject(
-                new Error('Error occured during signTransaction: ' + error.message),
-              );
-            }
+        const signature = await this.keychain.signTx({
+          username: data.username,
+          tx: data.decodedTransaction,
+          method: data.method,
+        });
+        if (signature.success) {
+          try {
+            const signedTransaction = signature.result;
+            const signTransactionMessage: SignTransactionMessage = {
+              signature:
+                signedTransaction.signatures[
+                  signedTransaction.signatures.length - 1
+                ],
+              signerId: data.signerId,
+              signatureRequestId: data.signatureRequestId,
+            };
+            this.socket.emit(
+              SocketMessageCommand.SIGN_TRANSACTION,
+              signTransactionMessage,
+              (response: string[]) => {
+                resolve(response);
+              },
+            );
+          } catch (error: any) {
+            reject(
+              new Error(
+                'Error occured during signTransaction: ' + error.message,
+              ),
+            );
           }
-          reject(signature.error);
+        }
+        reject(signature.error);
       } catch (error: any) {
         reject(
           new Error('Error occured during signTransaction: ' + error.message),
@@ -227,13 +227,13 @@ export class HiveMultisigSDK {
     });
   };
 
-/**
- * @description
- * Notifies the backend about a transaction being broadcasted.
- *
- * @param message The NotifyTxBroadcastedMessage containing signatureRequestId.
- * @returns A Promise that resolves with a string message indicating successful notification.
- */
+  /**
+   * @description
+   * Notifies the backend about a transaction being broadcasted.
+   *
+   * @param message The NotifyTxBroadcastedMessage containing signatureRequestId.
+   * @returns A Promise that resolves with a string message indicating successful notification.
+   */
   notifyTransactionBroadcasted = async (
     message: NotifyTxBroadcastedMessage,
   ): Promise<string> => {
@@ -272,9 +272,11 @@ export class HiveMultisigSDK {
           tx: data.transaction,
           method: data.method,
         });
-  
+
         if (!signature.success) {
-          reject(new Error("Failed to sign transaction during transaction encoding"));
+          reject(
+            new Error('Failed to sign transaction during transaction encoding'),
+          );
           return;
         }
         const signedTransaction = signature.result;
@@ -284,65 +286,87 @@ export class HiveMultisigSDK {
           message: `#${JSON.stringify(signedTransaction)}`,
           method: data.method,
         });
-  
+
         if (!encodedTransaction.success) {
-          reject(new Error("Failed to encode transaction"));
+          reject(new Error('Failed to encode transaction'));
           return;
         }
-  
+
         resolve(encodedTransaction.message);
       } catch (error: any) {
-        reject(new Error("Error occurred during encodeTransaction: " + error.message));
+        reject(
+          new Error(
+            'Error occurred during encodeTransaction: ' + error.message,
+          ),
+        );
       }
     });
   };
 
-  
   /**
    * @description
    * Decodes the encrypted transaction for the signature request.
-   * 
-   * @param signatureRequest 
-   * @param username 
-   * @param publicKey 
+   *
+   * @param signatureRequest
+   * @param username
+   * @param publicKey
    * @returns A Promise that resolves with the decoded transaction as a Transaction object.
    */
-  decodeTransaction = async(signatureRequest:SignatureRequest, username:string, publicKey:string): Promise<Transaction> => {
-    return new Promise(async (resolve,reject)=>{
-
-      if(!signatureRequest){reject(new Error("You passed an empty signatureRequest in decodeTransaction."));}
-      const signer = signatureRequest.signers.find((s)=> s.publicKey === publicKey);
-      if(!signer){reject(new Error("The publikKey cannot be found in the list of signers."))}
-      try{
-        const decodedTx = await this.keychain.decode(
-          { username,
-            message: signer.encryptedTransaction,
-            method: signatureRequest.keyType
-          }
+  decodeTransaction = async (
+    signatureRequest: SignatureRequest,
+    username: string,
+    publicKey: string,
+  ): Promise<Transaction> => {
+    return new Promise(async (resolve, reject) => {
+      if (!signatureRequest) {
+        reject(
+          new Error(
+            'You passed an empty signatureRequest in decodeTransaction.',
+          ),
         );
-        if(decodedTx.success){
-          const data = JSON.stringify(decodedTx.result).replace("#","");
-          if(typeof data === 'object' && data !== null){
-
-           
-            resolve(JSON.parse(data) as Transaction); 
-          }
-          reject(new Error("Cannot parse transaction string. Invalid transaction format."));
-        }
-      }catch(error:any){
-        reject(new Error("An error occured during decodeTransaction: "+ error.message));
       }
-    }
-    )
-  }
+      const signer = signatureRequest.signers.find(
+        (s) => s.publicKey === publicKey,
+      );
+      if (!signer) {
+        reject(
+          new Error('The publikKey cannot be found in the list of signers.'),
+        );
+      }
+      try {
+        const decodedTx = await this.keychain.decode({
+          username,
+          message: signer.encryptedTransaction,
+          method: signatureRequest.keyType,
+        });
+        if (decodedTx.success) {
+          const data = JSON.stringify(decodedTx.result).replace('#', '');
+          if (typeof data === 'object' && data !== null) {
+            resolve(JSON.parse(data) as Transaction);
+          }
+          reject(
+            new Error(
+              'Cannot parse transaction string. Invalid transaction format.',
+            ),
+          );
+        }
+      } catch (error: any) {
+        reject(
+          new Error(
+            'An error occured during decodeTransaction: ' + error.message,
+          ),
+        );
+      }
+    });
+  };
 
-/**
- * @description
- * Verifies the key and signature of a signer's connection message.
- *
- * @param message The signer connection message containing the public key, username, and signature.
- * @returns A Promise that resolves with a boolean indicating whether the key and signature are valid.
- */
+  /**
+   * @description
+   * Verifies the key and signature of a signer's connection message.
+   *
+   * @param message The signer connection message containing the public key, username, and signature.
+   * @returns A Promise that resolves with a boolean indicating whether the key and signature are valid.
+   */
   verifyKey = async (message: SignerConnectMessage): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
       HiveUtils.getClient()
@@ -361,49 +385,63 @@ export class HiveMultisigSDK {
     });
   };
 
-
- /**
- * @description
- * Subscribes to signature requests and invokes the provided callback function when a signature request is received.
- *
- * @param callback The callback function to be invoked with the signature request.
- * @returns A Promise that resolves with a string message indicating successful subscription.
- */
-  subscribeToSignRequests = (callback: SignatureRequestCallback): Promise<string> => {
+  /**
+   * @description
+   * Subscribes to signature requests and invokes the provided callback function when a signature request is received.
+   *
+   * @param callback The callback function to be invoked with the signature request.
+   * @returns A Promise that resolves with a string message indicating successful subscription.
+   */
+  subscribeToSignRequests = (
+    callback: SignatureRequestCallback,
+  ): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
-      try{
-        this.socket.on(SocketMessageCommand.REQUEST_SIGN_TRANSACTION, (signatureRequest: SignatureRequest) => {
-          callback(signatureRequest);
-        });
-        resolve("Subscribed to signature requests");
-      }catch(error:any){
-        reject(new Error(
-          "Error occured when trying to subscribe to signer requests: " + error.message)
-          );
+      try {
+        this.socket.on(
+          SocketMessageCommand.REQUEST_SIGN_TRANSACTION,
+          (signatureRequest: SignatureRequest) => {
+            callback(signatureRequest);
+          },
+        );
+        resolve('Subscribed to signature requests');
+      } catch (error: any) {
+        reject(
+          new Error(
+            'Error occured when trying to subscribe to signer requests: ' +
+              error.message,
+          ),
+        );
       }
     });
   };
 
   /**
- * @description
- * Subscribes to broadcasted transactions and invokes the provided callback function when a transaction has been broadcasted.
- *
- * @param callback The callback function to be invoked with the signature request.
- * @returns A Promise that resolves with a string message indicating successful subscription.
- */
-  subscribeToBroadcastedTransactions = (callback:SignatureRequestCallback): Promise<string> => {
+   * @description
+   * Subscribes to broadcasted transactions and invokes the provided callback function when a transaction has been broadcasted.
+   *
+   * @param callback The callback function to be invoked with the signature request.
+   * @returns A Promise that resolves with a string message indicating successful subscription.
+   */
+  subscribeToBroadcastedTransactions = (
+    callback: SignatureRequestCallback,
+  ): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
-      try{
-        this.socket.on(SocketMessageCommand.TRANSACTION_BROADCASTED_NOTIFICATION, (signatureRequest: SignatureRequest) => {
-          callback(signatureRequest);
-        });
-        resolve("Subscribed to broadcasted transactions");
-      }catch(error:any){
-        reject(new Error(
-          "Error occured when trying to subscribe to broadcasted transactions: " + error.message
-        ));
+      try {
+        this.socket.on(
+          SocketMessageCommand.TRANSACTION_BROADCASTED_NOTIFICATION,
+          (signatureRequest: SignatureRequest) => {
+            callback(signatureRequest);
+          },
+        );
+        resolve('Subscribed to broadcasted transactions');
+      } catch (error: any) {
+        reject(
+          new Error(
+            'Error occured when trying to subscribe to broadcasted transactions: ' +
+              error.message,
+          ),
+        );
       }
     });
   };
-  
 }
