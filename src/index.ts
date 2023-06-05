@@ -20,6 +20,7 @@ import {
   ISignTransaction,
   IEncodeTransaction,
   SignerConnect,
+  IDecodeTransaction,
 } from './interfaces/socket-message.interface';
 import { KeychainSDK, SignBuffer } from 'keychain-sdk';
 import { Socket, io } from 'socket.io-client';
@@ -315,20 +316,18 @@ export class HiveMultisigSDK {
    * @returns A Promise that resolves with the decoded transaction as a Transaction object.
    */
   decodeTransaction = async (
-    signatureRequest: SignatureRequest,
-    username: string,
-    publicKey: string,
+   data: IDecodeTransaction
   ): Promise<Transaction> => {
     return new Promise(async (resolve, reject) => {
-      if (!signatureRequest) {
+      if (!data.signatureRequest) {
         reject(
           new Error(
             'You passed an empty signatureRequest in decodeTransaction.',
           ),
         );
       }
-      const signer = signatureRequest.signers.find(
-        (s) => s.publicKey === publicKey,
+      const signer = data.signatureRequest.signers.find(
+        (s) => s.publicKey === data.publicKey,
       );
       if (!signer) {
         reject(
@@ -337,9 +336,9 @@ export class HiveMultisigSDK {
       }
       try {
         const decodedTx = await this.keychain.decode({
-          username,
+          username: data.username,
           message: signer.encryptedTransaction,
-          method: signatureRequest.keyType,
+          method: data.signatureRequest.keyType,
         });
         if (decodedTx.success) {
           const data = JSON.stringify(decodedTx.result).replace('#', '');
