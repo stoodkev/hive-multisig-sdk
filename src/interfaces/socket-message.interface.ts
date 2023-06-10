@@ -114,4 +114,9 @@ export interface IEncodeTransaction {
   receiver: string;
 }
 
+export interface IDecodeTransaction {
+  signatureRequest: SignatureRequest;
+  username: string;
+  publicKey: string;
+}
 export type SignatureRequestCallback = (message: SignatureRequest) => void;
