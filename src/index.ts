@@ -27,6 +27,7 @@ import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { HiveUtils } from './utils/hive.utils';
 import { PublicKey, Signature, Transaction, cryptoUtils } from '@hiveio/dhive';
 import { SignatureRequest } from './interfaces/signature-request';
+import { Authority } from '@hiveio/dhive';
 
 /**
  * @description
@@ -148,6 +149,36 @@ export class HiveMultisigSDK {
         const errorMessage =
           'Error occurred during multipleSignerConnect: ' + error.message;
         reject(new Error(errorMessage));
+      }
+    });
+  };
+
+  /**
+   * @description
+   * A function tha returns the account authorities that are required to sign for the multisig transaction
+   *
+   * @param username
+   * @param keyType the transaction key type or method
+   * @returns Authority - containing the list of accounts and keys as well as the corresponding weights and weight threshold
+   */
+  getSigners = async (
+    username: string,
+    keyType: KeychainKeyTypes,
+  ): Promise<Authority> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const account = await HiveUtils.getAccount(username);
+        if (account.length === 0) {
+          reject(`${username} not found`);
+        }
+        switch (keyType) {
+          case KeychainKeyTypes.active:
+            resolve(account[0].active);
+          case KeychainKeyTypes.posting:
+            resolve(account[0].posting);
+        }
+      } catch (error) {
+        reject(new Error('error occured during getSigners: ' + error.message));
       }
     });
   };
