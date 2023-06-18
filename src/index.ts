@@ -178,7 +178,7 @@ export class HiveMultisigSDK {
           case KeychainKeyTypes.posting:
             resolve(account[0].posting);
         }
-      } catch (error) {
+      } catch (error: any) {
         reject(new Error('error occured during getSigners: ' + error.message));
       }
     });
@@ -347,7 +347,7 @@ export class HiveMultisigSDK {
    * @returns A Promise that resolves with the decoded transaction as a Transaction object.
    */
   decodeTransaction = async (
-   data: IDecodeTransaction
+    data: IDecodeTransaction,
   ): Promise<Transaction> => {
     return new Promise(async (resolve, reject) => {
       if (!data.signatureRequest) {
@@ -364,30 +364,31 @@ export class HiveMultisigSDK {
         reject(
           new Error('The publikKey cannot be found in the list of signers.'),
         );
-      }
-      try {
-        const decodedTx = await this.keychain.decode({
-          username: data.username,
-          message: signer.encryptedTransaction,
-          method: data.signatureRequest.keyType,
-        });
-        if (decodedTx.success) {
-          const data = JSON.stringify(decodedTx.result).replace('#', '');
-          if (typeof data === 'object' && data !== null) {
-            resolve(JSON.parse(data) as Transaction);
+      } else {
+        try {
+          const decodedTx = await this.keychain.decode({
+            username: data.username,
+            message: signer.encryptedTransaction,
+            method: data.signatureRequest.keyType,
+          });
+          if (decodedTx.success) {
+            const data = JSON.stringify(decodedTx.result).replace('#', '');
+            if (typeof data === 'object' && data !== null) {
+              resolve(JSON.parse(data) as Transaction);
+            }
+            reject(
+              new Error(
+                'Cannot parse transaction string. Invalid transaction format.',
+              ),
+            );
           }
+        } catch (error: any) {
           reject(
             new Error(
-              'Cannot parse transaction string. Invalid transaction format.',
+              'An error occured during decodeTransaction: ' + error.message,
             ),
           );
         }
-      } catch (error: any) {
-        reject(
-          new Error(
-            'An error occured during decodeTransaction: ' + error.message,
-          ),
-        );
       }
     });
   };

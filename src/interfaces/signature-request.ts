@@ -1,5 +1,5 @@
-import { KeychainKeyTypes } from "hive-keychain-commons";
-import { Signer } from "./signer";
+import { KeychainKeyTypes } from 'hive-keychain-commons';
+import { Signer } from './signer';
 
 export interface SignatureRequest {
   id: number;
