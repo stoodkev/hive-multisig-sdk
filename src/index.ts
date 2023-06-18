@@ -39,11 +39,13 @@ import { Authority } from '@hiveio/dhive';
  * @class
  */
 export class HiveMultisigSDK {
+  window: Window;
   options?: MultisigOptions;
   keychain: KeychainSDK;
   socket: Socket;
-  constructor(options?: MultisigOptions) {
-    this.keychain = new KeychainSDK(window);
+  constructor(window: Window, options?: MultisigOptions) {
+    this.window = window;
+    this.keychain = new KeychainSDK(this.window);
     if (!options) {
       this.options = {
         socketAddress: 'http://localhost:5001',
