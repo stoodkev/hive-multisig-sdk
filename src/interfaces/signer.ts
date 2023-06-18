@@ -1,6 +1,6 @@
-import { SignatureRequest } from "./signature-request";
+import { SignatureRequest } from './signature-request';
 
-export class Signer {
+export interface Signer {
   id: number;
   publicKey: string;
   encryptedTransaction: string;

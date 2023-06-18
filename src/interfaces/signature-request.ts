@@ -1,7 +1,7 @@
 import { KeychainKeyTypes } from "hive-keychain-commons";
 import { Signer } from "./signer";
 
-export class SignatureRequest {
+export interface SignatureRequest {
   id: number;
   expirationDate: Date;
   threshold: number;
