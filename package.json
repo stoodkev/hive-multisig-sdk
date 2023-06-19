@@ -148,7 +148,7 @@
   "devDependencies": {
     "@types/bytebuffer": "^5.0.44"
   },
- "scripts": {
+  "scripts": {
     "prepare": "npm run build",
     "build": "tsc",
     "dev": "tsc -w",

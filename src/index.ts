@@ -21,7 +21,7 @@ import {
   IEncodeTransaction,
   SignerConnect,
   IDecodeTransaction,
-} from './interfaces/socket-message.interface';
+} from './interfaces/socket-message-interface';
 import { KeychainSDK, SignBuffer } from 'keychain-sdk';
 import { Socket, io } from 'socket.io-client';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
