@@ -354,8 +354,14 @@ export class HiveMultisigSDK {
         } 
         const encodedTrans:IEncodeTransaction = {
           ...data,
-          signedTransaction,
-          signRequestData
+          transaction: {...data.transaction},
+          method: data.method,
+          expirationDate: data.expirationDate,
+          initiator: data.initiator,
+          receiver: data.receiver,
+          authority: {...data.authority},
+          signedTransaction: signedTransaction,
+          signRequestData: signRequestData
         }
         resolve(encodedTrans);
       } catch (error: any) {
