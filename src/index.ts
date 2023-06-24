@@ -322,7 +322,7 @@ export class HiveMultisigSDK {
         });
 
         const signRequestList:RequestSignatureSigner[] = [] 
-        const encryptedTransaction:string = encodedTransaction.data.message;
+        const encryptedTransaction:string = encodedTransaction.result? encodedTransaction.result.toString():'';
         data.authority.account_auths.forEach((account)=> {
           const signRequest:RequestSignatureSigner ={ 
             encryptedTransaction,
@@ -346,12 +346,7 @@ export class HiveMultisigSDK {
           return;
         }
        
-        const signRequestData:ISignatureRequest = {
-          expirationDate: data.expirationDate,
-          threshold: data.authority.weight_threshold,
-          keyType: data.method,
-          signers: signRequestList
-        } 
+      
         const encodedTrans:IEncodeTransaction = {
           ...data,
           transaction: {...data.transaction},
@@ -361,7 +356,11 @@ export class HiveMultisigSDK {
           receiver: data.receiver,
           authority: {...data.authority},
           signedTransaction: signedTransaction,
-          signRequestData: signRequestData
+          signRequestData: { 
+            expirationDate: data.expirationDate,
+            threshold: data.authority.weight_threshold,
+            keyType: data.method,
+            signers: signRequestList},
         }
         resolve(encodedTrans);
       } catch (error: any) {
