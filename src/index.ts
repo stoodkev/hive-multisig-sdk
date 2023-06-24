@@ -299,8 +299,8 @@ export class HiveMultisigSDK {
    * @param data The object containing transaction encoding details.
    * @returns A Promise that resolves with the encoded transaction as a string.
    */
-  encodeTransaction = (data: IEncodeTransaction): Promise<ISignatureRequest> => {
-    return new Promise<ISignatureRequest>(async (resolve, reject) => {
+  encodeTransaction = (data: IEncodeTransaction): Promise<IEncodeTransaction> => {
+    return new Promise<IEncodeTransaction>(async (resolve, reject) => {
       try {
         const signature = await this.keychain.signTx({
           username: data.initiator.toString(),
@@ -340,17 +340,24 @@ export class HiveMultisigSDK {
           }
           signRequestList.push(signRequest);
         })
+
         if (!encodedTransaction.success) {
           reject(new Error('Failed to encode transaction'));
           return;
         }
+       
         const signRequestData:ISignatureRequest = {
           expirationDate: data.expirationDate,
           threshold: data.authority.weight_threshold,
           keyType: data.method,
           signers: signRequestList
         } 
-        resolve(signRequestData);
+        const encodedTx:IEncodeTransaction = {
+          ...data,
+          signedTransaction,
+          signRequestData
+        }
+        resolve(encodedTx);
       } catch (error: any) {
         reject(
           new Error(

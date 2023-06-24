@@ -114,7 +114,9 @@ export interface IEncodeTransaction {
   expirationDate: Date;
   initiator: string|Hive.PublicKey;
   receiver: string|Hive.PublicKey;
-  authority: Hive.Authority
+  authority: Hive.Authority;
+  signedTransaction?: Hive.SignedTransaction;
+  encodedTransaction?: ISignatureRequest;
 }
 
 export interface IDecodeTransaction {
