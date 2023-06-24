@@ -116,7 +116,7 @@ export interface IEncodeTransaction {
   receiver: string|Hive.PublicKey;
   authority: Hive.Authority;
   signedTransaction?: Hive.SignedTransaction;
-  encodedTransaction?: ISignatureRequest;
+  signRequestData?: ISignatureRequest;
 }
 
 export interface IDecodeTransaction {
