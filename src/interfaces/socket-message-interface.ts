@@ -2,6 +2,7 @@ import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { SignatureRequest } from './signature-request';
 import { KeychainOptions } from 'keychain-sdk';
 import { Signature, Transaction } from '@hiveio/dhive';
+import * as Hive from '@hiveio/dhive';
 
 export enum SocketMessageCommand {
   SIGNER_CONNECT = 'signer_connect',
@@ -108,10 +109,13 @@ export interface ISignTransaction {
 }
 
 export interface IEncodeTransaction {
-  username: string;
   transaction: Transaction;
   method: KeychainKeyTypes;
+  threshold: number;
+  expirationDate: Date;
   receiver: string;
+  initiator: string|Hive.PublicKey;
+  signers: Hive.Authority
 }
 
 export interface IDecodeTransaction {

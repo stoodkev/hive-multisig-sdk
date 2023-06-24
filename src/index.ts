@@ -21,6 +21,7 @@ import {
   IEncodeTransaction,
   SignerConnect,
   IDecodeTransaction,
+  ISignatureRequest,
 } from './interfaces/socket-message-interface';
 import { KeychainRequestResponse, KeychainSDK, SignBuffer } from 'keychain-sdk';
 import { Socket, io } from 'socket.io-client';
@@ -298,15 +299,14 @@ export class HiveMultisigSDK {
    * @param data The object containing transaction encoding details.
    * @returns A Promise that resolves with the encoded transaction as a string.
    */
-  encodeTransaction = (data: IEncodeTransaction): Promise<KeychainRequestResponse> => {
-    return new Promise<KeychainRequestResponse>(async (resolve, reject) => {
+  encodeTransaction = (data: IEncodeTransaction): Promise<ISignatureRequest> => {
+    return new Promise<ISignatureRequest>(async (resolve, reject) => {
       try {
         const signature = await this.keychain.signTx({
-          username: data.username,
+          username: data.initiator.toString(),
           tx: data.transaction,
           method: data.method,
         });
-
         if (!signature.success) {
           reject(
             new Error('Failed to sign transaction during transaction encoding'),
@@ -315,18 +315,33 @@ export class HiveMultisigSDK {
         }
         const signedTransaction = signature.result;
         const encodedTransaction = await this.keychain.encode({
-          username: data.username,
+          username: data.initiator.toString(),
           receiver: data.receiver,
           message: `#${JSON.stringify(signedTransaction)}`,
           method: data.method,
         });
 
+        const signRequestList:RequestSignatureSigner[] = [] 
+        const encryptedTransaction:string = encodedTransaction.data.message;
+        data.signers.account_auths.forEach((account)=> {
+          const signRequest:RequestSignatureSigner ={ 
+            encryptedTransaction,
+            publicKey:account[0],
+            weight:account[1].toString()
+          }
+          signRequestList.push(signRequest);
+        })
         if (!encodedTransaction.success) {
           reject(new Error('Failed to encode transaction'));
           return;
         }
-
-        resolve(encodedTransaction);
+        const signRequestData:ISignatureRequest = {
+          expirationDate: data.expirationDate,
+          threshold: data.threshold,
+          keyType: data.method,
+          signers: signRequestList
+        } 
+        resolve(signRequestData);
       } catch (error: any) {
         reject(
           new Error(
