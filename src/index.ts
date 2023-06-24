@@ -331,6 +331,15 @@ export class HiveMultisigSDK {
           }
           signRequestList.push(signRequest);
         })
+
+        data.authority.key_auths.forEach((key) =>{
+          const signRequest:RequestSignatureSigner ={ 
+            encryptedTransaction,
+            publicKey:key[0].toString(),
+            weight:key[1].toString()
+          }
+          signRequestList.push(signRequest);
+        })
         if (!encodedTransaction.success) {
           reject(new Error('Failed to encode transaction'));
           return;
