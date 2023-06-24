@@ -111,11 +111,10 @@ export interface ISignTransaction {
 export interface IEncodeTransaction {
   transaction: Transaction;
   method: KeychainKeyTypes;
-  threshold: number;
   expirationDate: Date;
-  receiver: string;
   initiator: string|Hive.PublicKey;
-  signers: Hive.Authority
+  receiver: string|Hive.PublicKey;
+  authority: Hive.Authority
 }
 
 export interface IDecodeTransaction {

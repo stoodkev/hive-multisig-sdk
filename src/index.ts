@@ -316,14 +316,14 @@ export class HiveMultisigSDK {
         const signedTransaction = signature.result;
         const encodedTransaction = await this.keychain.encode({
           username: data.initiator.toString(),
-          receiver: data.receiver,
+          receiver: data.receiver.toString(),
           message: `#${JSON.stringify(signedTransaction)}`,
           method: data.method,
         });
 
         const signRequestList:RequestSignatureSigner[] = [] 
         const encryptedTransaction:string = encodedTransaction.data.message;
-        data.signers.account_auths.forEach((account)=> {
+        data.authority.account_auths.forEach((account)=> {
           const signRequest:RequestSignatureSigner ={ 
             encryptedTransaction,
             publicKey:account[0],
@@ -337,7 +337,7 @@ export class HiveMultisigSDK {
         }
         const signRequestData:ISignatureRequest = {
           expirationDate: data.expirationDate,
-          threshold: data.threshold,
+          threshold: data.authority.weight_threshold,
           keyType: data.method,
           signers: signRequestList
         } 
