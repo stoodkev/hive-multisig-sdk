@@ -352,12 +352,12 @@ export class HiveMultisigSDK {
           keyType: data.method,
           signers: signRequestList
         } 
-        const encodedTx:IEncodeTransaction = {
+        const encodedTrans:IEncodeTransaction = {
           ...data,
           signedTransaction,
           signRequestData
         }
-        resolve(encodedTx);
+        resolve(encodedTrans);
       } catch (error: any) {
         reject(
           new Error(
