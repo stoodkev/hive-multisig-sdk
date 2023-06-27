@@ -323,13 +323,18 @@ export class HiveMultisigSDK {
 
         const signRequestList:RequestSignatureSigner[] = [] 
         const encryptedTransaction:string = encodedTransaction.result? encodedTransaction.result.toString():'';
-        data.authority.account_auths.forEach((account)=> {
-          const signRequest:RequestSignatureSigner ={ 
-            encryptedTransaction,
-            publicKey:account[0],
-            weight:account[1].toString()
+        data.authority.account_auths.forEach(async (account)=> {
+          const publicKey = await HiveUtils.getPublicKey(account[0],data.method);
+          if(publicKey){
+            const signRequest:RequestSignatureSigner ={ 
+              encryptedTransaction,
+              publicKey:publicKey.toString(),
+              weight:account[1].toString()
+            }
+            signRequestList.push(signRequest);
+          }else{
+            reject(new Error('Failed to encode transaction. Cannot find PublicKey'));
           }
-          signRequestList.push(signRequest);
         })
 
         data.authority.key_auths.forEach((key) =>{
@@ -346,7 +351,12 @@ export class HiveMultisigSDK {
           return;
         }
        
-      
+        const signRequestData:ISignatureRequest = {
+          expirationDate: data.expirationDate,
+          threshold: data.authority.weight_threshold,
+          keyType: data.method,
+          signers: signRequestList
+        } 
         const encodedTrans:IEncodeTransaction = {
           ...data,
           transaction: {...data.transaction},
@@ -356,11 +366,7 @@ export class HiveMultisigSDK {
           receiver: data.receiver,
           authority: {...data.authority},
           signedTransaction: signedTransaction,
-          signRequestData: { 
-            expirationDate: data.expirationDate,
-            threshold: data.authority.weight_threshold,
-            keyType: data.method,
-            signers: signRequestList},
+          signRequestData: signRequestData
         }
         resolve(encodedTrans);
       } catch (error: any) {
