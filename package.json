@@ -6,6 +6,7 @@
   "types": "dist/index.d.ts",
   "dependencies": {
     "@hiveio/dhive": "^1.2.6",
+    "@types/socket.io": "^3.0.2",
     "ansi-regex": "^5.0.1",
     "ansi-styles": "^4.3.0",
     "any-promise": "^1.3.0",

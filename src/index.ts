@@ -24,7 +24,7 @@ import {
   ISignatureRequest,
 } from './interfaces/socket-message-interface';
 import { KeychainRequestResponse, KeychainSDK, SignBuffer } from 'keychain-sdk';
-import { Socket, io } from 'socket.io-client';
+import * as io from 'socket.io-client';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { HiveUtils } from './utils/hive.utils';
 import { PublicKey, Signature, Transaction, cryptoUtils } from '@hiveio/dhive';
@@ -43,7 +43,7 @@ export class HiveMultisigSDK {
   window: Window;
   options?: MultisigOptions;
   keychain: KeychainSDK;
-  socket: Socket;
+  socket: io.Socket;
   constructor(window: Window, options?: MultisigOptions) {
     this.window = window;
     this.keychain = new KeychainSDK(this.window);
@@ -55,7 +55,7 @@ export class HiveMultisigSDK {
     } else {
       this.options = options;
     }
-    this.socket = io(this.options.socketAddress);
+    this.socket = io.connect(this.options.socketAddress);
   }
 
   /**
