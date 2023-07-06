@@ -56,6 +56,9 @@ export class HiveMultisigSDK {
       this.options = options;
     }
     this.socket = io.connect(this.options.socketAddress);
+    this.socket.on("connect", () =>{
+      console.log(`Socket Connected with ID: ${this.socket.id}`)
+    })
   }
 
   /**
@@ -473,7 +476,7 @@ export class HiveMultisigSDK {
         this.socket.on(
           SocketMessageCommand.REQUEST_SIGN_TRANSACTION,
           (signatureRequest: SignatureRequest) => {
-            console.log(`Signature Request: ${signatureRequest}`)
+            console.log(`Signature Request: ${JSON.stringify(signatureRequest)}`)
             // callback(signatureRequest);
           },
         );
