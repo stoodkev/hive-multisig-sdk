@@ -1,4 +1,4 @@
-import { Client } from '@hiveio/dhive';
+import { Client, PublicKey } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 
 let hiveClient: Client;
@@ -23,14 +23,13 @@ const getPublicKey = async(username:string, keyType: KeychainKeyTypes) =>{
   try{
     switch(keyType){
       case KeychainKeyTypes.posting:
-         return account[0].posting.key_auths[0]
+         return account[0].posting.key_auths[0][0]
       case KeychainKeyTypes.active:
-         return account[0].active.key_auths[0]
+         return account[0].active.key_auths[0][0]
      }
   }catch{
     throw  Error(`Cannot find public key for ${username}`);
   }
- 
 }
 
 export const HiveUtils = {
