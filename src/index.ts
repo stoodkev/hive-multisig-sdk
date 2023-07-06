@@ -467,14 +467,14 @@ export class HiveMultisigSDK {
    * @returns A Promise that resolves with a string message indicating successful subscription.
    */
   subscribeToSignRequests = (
-    callback: SignatureRequestCallback,
   ): Promise<boolean> => {
     return new Promise<boolean>((resolve, reject) => {
       try {
         this.socket.on(
           SocketMessageCommand.REQUEST_SIGN_TRANSACTION,
           (signatureRequest: SignatureRequest) => {
-            callback(signatureRequest);
+            console.log(`Signature Request: ${signatureRequest}`)
+            // callback(signatureRequest);
           },
         );
         resolve(true);
