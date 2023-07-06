@@ -325,6 +325,7 @@ export class HiveMultisigSDK {
         const encryptedTransaction:string = encodedTransaction.result? encodedTransaction.result.toString():'';
         data.authority.account_auths.forEach(async (account)=> {
           const publicKey = await HiveUtils.getPublicKey(account[0],data.method);
+          console.log(`PublicKey: ${publicKey}`)
           if(publicKey){
             const signRequest:RequestSignatureSigner ={ 
               encryptedTransaction,
