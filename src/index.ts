@@ -323,35 +323,33 @@ export class HiveMultisigSDK {
 
         const signRequestList:RequestSignatureSigner[] = [] 
         const encryptedTransaction:string = encodedTransaction.result? encodedTransaction.result.toString():'';
-        data.authority.account_auths.forEach(async (account)=> {
-          const publicKey = await HiveUtils.getPublicKey(account[0],data.method);
-          console.log(`PublicKey: ${publicKey}`)
+
+        for(let i = 0; i < data.authority.account_auths.length ; i++){
+          const publicKey = await HiveUtils.getPublicKey(data.authority.account_auths[i][0],data.method);
           if(publicKey){
             const signRequest:RequestSignatureSigner ={ 
               encryptedTransaction,
               publicKey:publicKey.toString(),
-              weight:account[1].toString()
+              weight:data.authority.account_auths[i][1].toString()
             }
             signRequestList.push(signRequest);
-          }else{
-            reject(new Error('Failed to encode transaction. Cannot find PublicKey'));
           }
-        })
+        }
 
-        data.authority.key_auths.forEach((key) =>{
+        for(let j=0; j<data.authority.key_auths.length; j++){
           const signRequest:RequestSignatureSigner ={ 
             encryptedTransaction,
-            publicKey:key[0].toString(),
-            weight:key[1].toString()
+            publicKey:data.authority.key_auths[j][0].toString(),
+            weight:data.authority.key_auths[j][1].toString()
           }
-          signRequestList.push(signRequest);
-        })
+          signRequestList.push(signRequest); 
+        }
 
         if (!encodedTransaction.success) {
           reject(new Error('Failed to encode transaction'));
           return;
         }
-       
+        console.log(`signRequestList: ${signRequestList}`);
         const signRequestData:ISignatureRequest = {
           expirationDate: data.expirationDate,
           threshold: data.authority.weight_threshold,
