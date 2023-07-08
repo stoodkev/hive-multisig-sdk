@@ -56,9 +56,9 @@ export class HiveMultisigSDK {
       this.options = options;
     }
     this.socket = io.connect(this.options.socketAddress);
-    this.socket.on("connect", () =>{
-      console.log(`Socket Connected with ID: ${this.socket.id}`)
-    })
+    this.socket.on('connect', () => {
+      console.log(`Socket Connected with ID: ${this.socket.id}`);
+    });
   }
 
   /**
@@ -302,7 +302,9 @@ export class HiveMultisigSDK {
    * @param data The object containing transaction encoding details.
    * @returns A Promise that resolves with the encoded transaction as a string.
    */
-  encodeTransaction = (data: IEncodeTransaction): Promise<IEncodeTransaction> => {
+  encodeTransaction = (
+    data: IEncodeTransaction,
+  ): Promise<IEncodeTransaction> => {
     return new Promise<IEncodeTransaction>(async (resolve, reject) => {
       try {
         const signature = await this.keychain.signTx({
@@ -324,28 +326,33 @@ export class HiveMultisigSDK {
           method: data.method,
         });
 
-        const signRequestList:RequestSignatureSigner[] = [] 
-        const encryptedTransaction:string = encodedTransaction.result? encodedTransaction.result.toString():'';
+        const signRequestList: RequestSignatureSigner[] = [];
+        const encryptedTransaction: string = encodedTransaction.result
+          ? encodedTransaction.result.toString()
+          : '';
 
-        for(let i = 0; i < data.authority.account_auths.length ; i++){
-          const publicKey = await HiveUtils.getPublicKey(data.authority.account_auths[i][0],data.method);
-          if(publicKey){
-            const signRequest:RequestSignatureSigner ={ 
+        for (let i = 0; i < data.authority.account_auths.length; i++) {
+          const publicKey = await HiveUtils.getPublicKey(
+            data.authority.account_auths[i][0],
+            data.method,
+          );
+          if (publicKey) {
+            const signRequest: RequestSignatureSigner = {
               encryptedTransaction,
-              publicKey:publicKey.toString(),
-              weight:data.authority.account_auths[i][1].toString()
-            }
+              publicKey: publicKey.toString(),
+              weight: data.authority.account_auths[i][1].toString(),
+            };
             signRequestList.push(signRequest);
           }
         }
 
-        for(let j=0; j<data.authority.key_auths.length; j++){
-          const signRequest:RequestSignatureSigner ={ 
+        for (let j = 0; j < data.authority.key_auths.length; j++) {
+          const signRequest: RequestSignatureSigner = {
             encryptedTransaction,
-            publicKey:data.authority.key_auths[j][0].toString(),
-            weight:data.authority.key_auths[j][1].toString()
-          }
-          signRequestList.push(signRequest); 
+            publicKey: data.authority.key_auths[j][0].toString(),
+            weight: data.authority.key_auths[j][1].toString(),
+          };
+          signRequestList.push(signRequest);
         }
 
         if (!encodedTransaction.success) {
@@ -353,23 +360,23 @@ export class HiveMultisigSDK {
           return;
         }
         console.log(`signRequestList: ${signRequestList}`);
-        const signRequestData:ISignatureRequest = {
+        const signRequestData: ISignatureRequest = {
           expirationDate: data.expirationDate,
           threshold: data.authority.weight_threshold,
           keyType: data.method,
-          signers: signRequestList
-        } 
-        const encodedTrans:IEncodeTransaction = {
+          signers: signRequestList,
+        };
+        const encodedTrans: IEncodeTransaction = {
           ...data,
-          transaction: {...data.transaction},
+          transaction: { ...data.transaction },
           method: data.method,
           expirationDate: data.expirationDate,
           initiator: data.initiator,
           receiver: data.receiver,
-          authority: {...data.authority},
+          authority: { ...data.authority },
           signedTransaction: signedTransaction,
-          signRequestData: signRequestData
-        }
+          signRequestData: signRequestData,
+        };
         resolve(encodedTrans);
       } catch (error: any) {
         reject(
@@ -470,14 +477,14 @@ export class HiveMultisigSDK {
    * @returns A Promise that resolves with a string message indicating successful subscription.
    */
   subscribeToSignRequests = (
+    callback: SignatureRequestCallback,
   ): Promise<boolean> => {
     return new Promise<boolean>((resolve, reject) => {
       try {
         this.socket.on(
           SocketMessageCommand.REQUEST_SIGN_TRANSACTION,
           (signatureRequest: SignatureRequest) => {
-            console.log(`Signature Request: ${JSON.stringify(signatureRequest)}`)
-            // callback(signatureRequest);
+            callback(signatureRequest);
           },
         );
         resolve(true);
