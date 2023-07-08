@@ -359,7 +359,6 @@ export class HiveMultisigSDK {
           reject(new Error('Failed to encode transaction'));
           return;
         }
-        console.log(`signRequestList: ${signRequestList}`);
         const signRequestData: ISignatureRequest = {
           expirationDate: data.expirationDate,
           threshold: data.authority.weight_threshold,
