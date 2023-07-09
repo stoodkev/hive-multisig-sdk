@@ -98,6 +98,7 @@ export class HiveMultisigSDK {
         } as SignBuffer);
 
         if (signBuffer.success) {
+          console.log(`SignerConnect SignBuffer: ${signBuffer}`)
           const signerConnectParams: SignerConnectMessage = {
             publicKey: signBuffer.publicKey!,
             message: JSON.stringify(signBuffer.result).replace(`"`, ''),
