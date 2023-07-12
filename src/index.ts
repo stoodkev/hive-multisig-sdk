@@ -98,7 +98,9 @@ export class HiveMultisigSDK {
         } as SignBuffer);
 
         if (signBuffer.success) {
-          console.log(`SignerConnect SignBuffer: ${JSON.stringify(signBuffer)}`)
+          console.log(
+            `SignerConnect SignBuffer: ${JSON.stringify(signBuffer)}`,
+          );
           const signerConnectParams: SignerConnectMessage = {
             publicKey: signBuffer.publicKey!,
             message: JSON.stringify(signBuffer.result).replace(`"`, ''),
@@ -423,15 +425,16 @@ export class HiveMultisigSDK {
             method: data.signatureRequest.keyType,
           });
           if (decodedTx.success) {
-            const data = JSON.stringify(decodedTx.result).replace('#', '');
-            if (typeof data === 'object' && data !== null) {
+            const data = JSON.stringify(decodedTx.result).replace(/#$/, '');
+            try {
               resolve(JSON.parse(data) as Transaction);
+            } catch {
+              reject(
+                new Error(
+                  'Cannot parse transaction string. Invalid transaction format.',
+                ),
+              );
             }
-            reject(
-              new Error(
-                'Cannot parse transaction string. Invalid transaction format.',
-              ),
-            );
           }
         } catch (error: any) {
           reject(
