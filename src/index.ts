@@ -425,7 +425,10 @@ export class HiveMultisigSDK {
             method: data.signatureRequest.keyType,
           });
           if (decodedTx.success) {
-            const data = JSON.stringify(decodedTx.result).replace(/#$/, '');
+            const data = JSON.parse(
+              JSON.stringify(decodedTx.result).replace('#', ''),
+            );
+
             try {
               resolve(JSON.parse(data) as Transaction);
             } catch {
