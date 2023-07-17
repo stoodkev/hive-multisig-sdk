@@ -433,6 +433,7 @@ export class HiveMultisigSDK {
             try {
               const tx:ITransaction = {
                 id: signer.id,
+                signatureRequestId: data.signatureRequest.id,
                 transaction:JSON.parse(data) as Transaction
               }
               resolve(tx);

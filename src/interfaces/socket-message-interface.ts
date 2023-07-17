@@ -127,6 +127,7 @@ export interface IDecodeTransaction {
 
 export interface ITransaction{
   id:number,
+  signatureRequestId:number;
   transaction: Transaction
 }
 
