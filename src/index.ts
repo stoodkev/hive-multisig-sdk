@@ -22,6 +22,7 @@ import {
   SignerConnect,
   IDecodeTransaction,
   ISignatureRequest,
+  ITransaction,
 } from './interfaces/socket-message-interface';
 import { KeychainRequestResponse, KeychainSDK, SignBuffer } from 'keychain-sdk';
 import * as io from 'socket.io-client';
@@ -401,7 +402,7 @@ export class HiveMultisigSDK {
    */
   decodeTransaction = async (
     data: IDecodeTransaction,
-  ): Promise<Transaction> => {
+  ): Promise<ITransaction> => {
     return new Promise(async (resolve, reject) => {
       if (!data.signatureRequest) {
         reject(
@@ -430,7 +431,11 @@ export class HiveMultisigSDK {
             );
 
             try {
-              resolve(JSON.parse(data) as Transaction);
+              const tx:ITransaction = {
+                id: signer.id,
+                transaction:JSON.parse(data) as Transaction
+              }
+              resolve(tx);
             } catch {
               reject(
                 new Error(
