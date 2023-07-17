@@ -431,13 +431,13 @@ export class HiveMultisigSDK {
             );
 
             try {
-              const tx:ITransaction = {
+              const tx: ITransaction = {
                 id: signer.id,
                 signatureRequestId: data.signatureRequest.id,
-                transaction: data as Transaction,
+                transaction: JSON.parse(data) as Transaction,
                 method: data.signatureRequest.keyType,
-                username: data.username
-              }
+                username: data.username,
+              };
               resolve(tx);
             } catch {
               reject(
