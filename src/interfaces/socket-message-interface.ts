@@ -124,4 +124,10 @@ export interface IDecodeTransaction {
   username: string;
   publicKey: string;
 }
+
+export interface ITransaction{
+  id:number,
+  transaction: Transaction
+}
+
 export type SignatureRequestCallback = (message: SignatureRequest) => void;
