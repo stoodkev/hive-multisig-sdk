@@ -28,9 +28,9 @@ import { KeychainRequestResponse, KeychainSDK, SignBuffer } from 'keychain-sdk';
 import * as io from 'socket.io-client';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { HiveUtils } from './utils/hive.utils';
-import { PublicKey, Signature, Transaction, cryptoUtils } from '@hiveio/dhive';
+import { PublicKey, Signature, cryptoUtils } from '@hiveio/dhive';
 import { SignatureRequest } from './interfaces/signature-request';
-import { Authority } from '@hiveio/dhive';
+import { Authority, Transaction } from '@hiveio/dhive';
 
 /**
  * @description
@@ -434,7 +434,7 @@ export class HiveMultisigSDK {
               const tx: ITransaction = {
                 id: signer.id,
                 signatureRequestId: data.signatureRequest.id,
-                transaction: JSON.parse(data) as Transaction,
+                transaction: { ...(JSON.parse(data) as Transaction) },
                 method: data.signatureRequest.keyType,
                 username: data.username,
               };
@@ -442,7 +442,7 @@ export class HiveMultisigSDK {
             } catch {
               reject(
                 new Error(
-                  'Cannot parse transaction string. Invalid transaction format.',
+                  `Cannot parse transaction string. Invalid transaction format.`,
                 ),
               );
             }
