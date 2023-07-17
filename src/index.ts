@@ -434,7 +434,9 @@ export class HiveMultisigSDK {
               const tx:ITransaction = {
                 id: signer.id,
                 signatureRequestId: data.signatureRequest.id,
-                transaction:JSON.parse(data) as Transaction
+                transaction:JSON.parse(data) as Transaction,
+                method: data.signatureRequest.keyType,
+                username: data.username
               }
               resolve(tx);
             } catch {
