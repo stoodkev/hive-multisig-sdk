@@ -428,13 +428,13 @@ export class HiveMultisigSDK {
           if (decodedTx.success) {
             const transaction = JSON.parse(
               JSON.stringify(decodedTx.result).replace('#', ''),
-            ) as Transaction;
+            );
 
             try {
               const tx: ITransaction = {
                 id: signer.id,
                 signatureRequestId: data.signatureRequest.id,
-                transaction,
+                transaction: JSON.parse(transaction) as Transaction,
                 method: data.signatureRequest.keyType,
                 username: data.username,
               };
