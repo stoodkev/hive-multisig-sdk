@@ -323,24 +323,24 @@ export class HiveMultisigSDK {
           return;
         }
         const signedTransaction = signature.result;
+        const encodedTransaction = await this.keychain.encode({
+          username: data.initiator.toString(),
+          receiver: data.receiver.toString(),
+          message: `#${JSON.stringify(signedTransaction)}`,
+          method: data.method,
+        });
+
         const signRequestList: RequestSignatureSigner[] = [];
-        //accounts
+        const encryptedTransaction: string = encodedTransaction.result
+          ? encodedTransaction.result.toString()
+          : '';
+
         for (let i = 0; i < data.authority.account_auths.length; i++) {
-          const receiver:string = data.authority.account_auths[i][0]
           const publicKey = await HiveUtils.getPublicKey(
-            receiver,
+            data.authority.account_auths[i][0],
             data.method,
           );
           if (publicKey) {
-            const encodedTransaction = await this.keychain.encode({
-              username: data.initiator.toString(),
-              receiver: receiver,
-              message: `#${JSON.stringify(signedTransaction)}`,
-              method: data.method,
-            });
-            const encryptedTransaction: string = encodedTransaction.result
-              ? encodedTransaction.result.toString()
-              : '';
             const signRequest: RequestSignatureSigner = {
               encryptedTransaction,
               publicKey: publicKey.toString(),
@@ -349,25 +349,20 @@ export class HiveMultisigSDK {
             signRequestList.push(signRequest);
           }
         }
-        //keys
-        // for (let j = 0; j < data.authority.key_auths.length; j++) {
-        //   const encodedTransaction = await this.keychain.encode({
-        //     username: data.initiator.toString(),
-        //     receiver: data.authority.key_auths[j][0].toString() ,
-        //     message: `#${JSON.stringify(signedTransaction)}`,
-        //     method: data.method,
-        //   });
-        //   const encryptedTransaction: string = encodedTransaction.result
-        //     ? encodedTransaction.result.toString()
-        //     : '';
-        //   const signRequest: RequestSignatureSigner = {
-        //     encryptedTransaction,
-        //     publicKey: data.authority.key_auths[j][0].toString(),
-        //     weight: data.authority.key_auths[j][1].toString(),
-        //   };
-        //   signRequestList.push(signRequest);
-        // }
 
+        for (let j = 0; j < data.authority.key_auths.length; j++) {
+          const signRequest: RequestSignatureSigner = {
+            encryptedTransaction,
+            publicKey: data.authority.key_auths[j][0].toString(),
+            weight: data.authority.key_auths[j][1].toString(),
+          };
+          signRequestList.push(signRequest);
+        }
+
+        if (!encodedTransaction.success) {
+          reject(new Error('Failed to encode transaction'));
+          return;
+        }
         const signRequestData: ISignatureRequest = {
           expirationDate: data.expirationDate,
           threshold: data.authority.weight_threshold,
