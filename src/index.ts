@@ -350,23 +350,23 @@ export class HiveMultisigSDK {
           }
         }
         //keys
-        for (let j = 0; j < data.authority.key_auths.length; j++) {
-          const encodedTransaction = await this.keychain.encode({
-            username: data.initiator.toString(),
-            receiver: data.authority.key_auths[j][0].toString() ,
-            message: `#${JSON.stringify(signedTransaction)}`,
-            method: data.method,
-          });
-          const encryptedTransaction: string = encodedTransaction.result
-            ? encodedTransaction.result.toString()
-            : '';
-          const signRequest: RequestSignatureSigner = {
-            encryptedTransaction,
-            publicKey: data.authority.key_auths[j][0].toString(),
-            weight: data.authority.key_auths[j][1].toString(),
-          };
-          signRequestList.push(signRequest);
-        }
+        // for (let j = 0; j < data.authority.key_auths.length; j++) {
+        //   const encodedTransaction = await this.keychain.encode({
+        //     username: data.initiator.toString(),
+        //     receiver: data.authority.key_auths[j][0].toString() ,
+        //     message: `#${JSON.stringify(signedTransaction)}`,
+        //     method: data.method,
+        //   });
+        //   const encryptedTransaction: string = encodedTransaction.result
+        //     ? encodedTransaction.result.toString()
+        //     : '';
+        //   const signRequest: RequestSignatureSigner = {
+        //     encryptedTransaction,
+        //     publicKey: data.authority.key_auths[j][0].toString(),
+        //     weight: data.authority.key_auths[j][1].toString(),
+        //   };
+        //   signRequestList.push(signRequest);
+        // }
 
         const signRequestData: ISignatureRequest = {
           expirationDate: data.expirationDate,
