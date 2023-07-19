@@ -344,7 +344,7 @@ export class HiveMultisigSDK {
               message: `#${JSON.stringify(signedTransaction)}`,
               method: data.method,
             };
-            console.log('Encoding:');
+            console.log('Encoding for user:');
             console.log(msg);
             const encodedTransaction = await this.keychain.encode(msg);
             if (encodedTransaction.result) {
@@ -354,6 +354,9 @@ export class HiveMultisigSDK {
                 weight: weight,
               };
               signRequestList.push(signRequest);
+            } else {
+              console.log('Encoding for user Failed:');
+              console.log(encodedTransaction);
             }
           }
         }
@@ -367,7 +370,7 @@ export class HiveMultisigSDK {
             message: `#${JSON.stringify(signedTransaction)}`,
             method: data.method,
           };
-          console.log('Encoding:');
+          console.log('Encoding for key:');
           console.log(msg);
           const encodedTransaction = await this.keychain.encode(msg);
 
@@ -378,6 +381,9 @@ export class HiveMultisigSDK {
               weight: weight,
             };
             signRequestList.push(signRequest);
+          } else {
+            console.log('Encoding for key Failed:');
+            console.log(encodedTransaction);
           }
         }
         const signRequestData: ISignatureRequest = {
