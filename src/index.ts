@@ -332,10 +332,7 @@ export class HiveMultisigSDK {
         const signRequestList: RequestSignatureSigner[] = [];
 
         for (let i = 0; i < data.authority.account_auths.length; i++) {
-          const account = await HiveUtils.getPublicKey(
-            data.authority.account_auths[i][0],
-            data.method,
-          );
+          const account = data.authority.account_auths[i][0];
           const weight = data.authority.account_auths[i][1].toString();
           if (account) {
             const msg: Encode = {
