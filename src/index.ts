@@ -323,45 +323,51 @@ export class HiveMultisigSDK {
           return;
         }
         const signedTransaction = signature.result;
-        const encodedTransaction = await this.keychain.encode({
-          username: data.initiator.toString(),
-          receiver: data.receiver.toString(),
-          message: `#${JSON.stringify(signedTransaction)}`,
-          method: data.method,
-        });
 
         const signRequestList: RequestSignatureSigner[] = [];
-        const encryptedTransaction: string = encodedTransaction.result
-          ? encodedTransaction.result.toString()
-          : '';
 
         for (let i = 0; i < data.authority.account_auths.length; i++) {
-          const publicKey = await HiveUtils.getPublicKey(
+          const account = await HiveUtils.getPublicKey(
             data.authority.account_auths[i][0],
             data.method,
           );
-          if (publicKey) {
-            const signRequest: RequestSignatureSigner = {
-              encryptedTransaction,
-              publicKey: publicKey.toString(),
-              weight: data.authority.account_auths[i][1].toString(),
-            };
-            signRequestList.push(signRequest);
+          const weight = data.authority.account_auths[i][1].toString();
+          if (account) {
+            const encodedTransaction = await this.keychain.encode({
+              username: data.initiator.toString(),
+              receiver: account.toString(),
+              message: `#${JSON.stringify(signedTransaction)}`,
+              method: data.method,
+            });
+            if (encodedTransaction.result) {
+              const signRequest: RequestSignatureSigner = {
+                encryptedTransaction: encodedTransaction.result.toString(),
+                publicKey: account.toString(),
+                weight: weight,
+              };
+              signRequestList.push(signRequest);
+            }
           }
         }
 
         for (let j = 0; j < data.authority.key_auths.length; j++) {
-          const signRequest: RequestSignatureSigner = {
-            encryptedTransaction,
-            publicKey: data.authority.key_auths[j][0].toString(),
-            weight: data.authority.key_auths[j][1].toString(),
-          };
-          signRequestList.push(signRequest);
-        }
+          const key = data.authority.key_auths[j][0].toString();
+          const weight = data.authority.key_auths[j][1].toString();
+          const encodedTransaction = await this.keychain.encode({
+            username: data.initiator.toString(),
+            receiver: key,
+            message: `#${JSON.stringify(signedTransaction)}`,
+            method: data.method,
+          });
 
-        if (!encodedTransaction.success) {
-          reject(new Error('Failed to encode transaction'));
-          return;
+          if (encodedTransaction.result) {
+            const signRequest: RequestSignatureSigner = {
+              encryptedTransaction: encodedTransaction.result.toString(),
+              publicKey: key,
+              weight: weight,
+            };
+            signRequestList.push(signRequest);
+          }
         }
         const signRequestData: ISignatureRequest = {
           expirationDate: data.expirationDate,
@@ -375,7 +381,6 @@ export class HiveMultisigSDK {
           method: data.method,
           expirationDate: data.expirationDate,
           initiator: data.initiator,
-          receiver: data.receiver,
           authority: { ...data.authority },
           signedTransaction: signedTransaction,
           signRequestData: signRequestData,
@@ -431,13 +436,13 @@ export class HiveMultisigSDK {
             );
 
             try {
-              const tx:ITransaction = {
+              const tx: ITransaction = {
                 id: signer.id,
                 signatureRequestId: data.signatureRequest.id,
                 transaction: data as Transaction,
                 method: data.signatureRequest.keyType,
-                username: data.username
-              }
+                username: data.username,
+              };
               resolve(tx);
             } catch {
               reject(

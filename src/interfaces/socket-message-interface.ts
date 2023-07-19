@@ -86,7 +86,7 @@ export interface RequestSignatureMessage extends SocketMessagePayload {
 
 export interface RequestSignatureSigner {
   encryptedTransaction: string; // Encrypted transaction with signer key
-  publicKey: string;
+  publicKey: string; // public key of signer
   weight: string;
 }
 
@@ -113,7 +113,6 @@ export interface IEncodeTransaction {
   method: KeychainKeyTypes;
   expirationDate: Date;
   initiator: string|Hive.PublicKey;
-  receiver: string|Hive.PublicKey;
   authority: Hive.Authority;
   signedTransaction?: Hive.SignedTransaction;
   signRequestData?: ISignatureRequest;
