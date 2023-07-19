@@ -24,7 +24,12 @@ import {
   ISignatureRequest,
   ITransaction,
 } from './interfaces/socket-message-interface';
-import { KeychainRequestResponse, KeychainSDK, SignBuffer } from 'keychain-sdk';
+import {
+  Encode,
+  KeychainRequestResponse,
+  KeychainSDK,
+  SignBuffer,
+} from 'keychain-sdk';
 import * as io from 'socket.io-client';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { HiveUtils } from './utils/hive.utils';
@@ -333,12 +338,15 @@ export class HiveMultisigSDK {
           );
           const weight = data.authority.account_auths[i][1].toString();
           if (account) {
-            const encodedTransaction = await this.keychain.encode({
+            const msg: Encode = {
               username: data.initiator.toString(),
               receiver: account.toString(),
               message: `#${JSON.stringify(signedTransaction)}`,
               method: data.method,
-            });
+            };
+            console.log('Encoding:');
+            console.log(msg);
+            const encodedTransaction = await this.keychain.encode(msg);
             if (encodedTransaction.result) {
               const signRequest: RequestSignatureSigner = {
                 encryptedTransaction: encodedTransaction.result.toString(),
@@ -353,12 +361,15 @@ export class HiveMultisigSDK {
         for (let j = 0; j < data.authority.key_auths.length; j++) {
           const key = data.authority.key_auths[j][0].toString();
           const weight = data.authority.key_auths[j][1].toString();
-          const encodedTransaction = await this.keychain.encode({
+          const msg: Encode = {
             username: data.initiator.toString(),
             receiver: key,
             message: `#${JSON.stringify(signedTransaction)}`,
             method: data.method,
-          });
+          };
+          console.log('Encoding:');
+          console.log(msg);
+          const encodedTransaction = await this.keychain.encode(msg);
 
           if (encodedTransaction.result) {
             const signRequest: RequestSignatureSigner = {
