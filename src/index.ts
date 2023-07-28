@@ -26,6 +26,7 @@ import {
 } from './interfaces/socket-message-interface';
 import {
   Encode,
+  EncodeWithKeys,
   KeychainRequestResponse,
   KeychainSDK,
   SignBuffer,
@@ -358,31 +359,47 @@ export class HiveMultisigSDK {
           }
         }
 
-        for (let j = 0; j < data.authority.key_auths.length; j++) {
-          const key = data.authority.key_auths[j][0].toString();
-          const weight = data.authority.key_auths[j][1].toString();
-          const msg: Encode = {
-            username: data.initiator.toString(),
-            receiver: key,
-            message: `#${JSON.stringify(signedTransaction)}`,
-            method: data.method,
-          };
-          console.log('Encoding for key:');
-          console.log(msg);
-          const encodedTransaction = await this.keychain.encode(msg);
+        const publicKeys:string[] = []
 
-          if (encodedTransaction.result) {
-            const signRequest: RequestSignatureSigner = {
-              encryptedTransaction: encodedTransaction.result.toString(),
-              publicKey: key,
-              weight: weight,
-            };
-            signRequestList.push(signRequest);
-          } else {
-            console.log('Encoding for key Failed:');
-            console.log(encodedTransaction);
-          }
+        for(let j = 0; j < data.authority.key_auths.length; j++){
+          const key = data.authority.key_auths[j][0].toString();
+          publicKeys.push(key);
         }
+        const msg:EncodeWithKeys = {
+          username: data.initiator.toString(),
+          publicKeys,
+          message: `#${JSON.stringify(signedTransaction)}`,
+          method: data.method,
+        }
+        const encodedTransaction = await this.keychain.encodeWithKeys(msg);
+        if (encodedTransaction.result) {
+          console.log("Encoded transaction for keys:")
+          console.log(encodedTransaction)
+      }
+        // for (let j = 0; j < data.authority.key_auths.length; j++) {
+        //   const weight = data.authority.key_auths[j][1].toString();
+        //   const msg: = {
+        //     username: data.initiator.toString(),
+        //     publicKeys: key,
+        //     message: `#${JSON.stringify(signedTransaction)}`,
+        //     method: data.method,
+        //   };
+        //   console.log('Encoding for key:');
+        //   console.log(msg);
+        //   const encodedTransaction = await this.keychain.encodeWithKeys(msg);
+
+        //   if (encodedTransaction.result) {
+        //     const signRequest: RequestSignatureSigner = {
+        //       encryptedTransaction: encodedTransaction.result.toString(),
+        //       publicKey: key,
+        //       weight: weight,
+        //     };
+        //     signRequestList.push(signRequest);
+        //   } else {
+        //     console.log('Encoding for key Failed:');
+        //     console.log(encodedTransaction);
+        //   }
+        // }
         const signRequestData: ISignatureRequest = {
           expirationDate: data.expirationDate,
           threshold: data.authority.weight_threshold,
