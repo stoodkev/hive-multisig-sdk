@@ -6,7 +6,6 @@ import {
   cryptoUtils,
 } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
-import { KeychainSDK, Login, SignBuffer } from 'keychain-sdk';
 import * as io from 'socket.io-client';
 import { SignatureRequest } from './interfaces/signature-request';
 import {
@@ -26,6 +25,13 @@ import {
   SignerConnectResponse,
   SocketMessageCommand,
 } from './interfaces/socket-message-interface';
+import {
+  Encode,
+  EncodeWithKeys,
+  KeychainRequestResponse,
+  KeychainSDK,
+  SignBuffer,
+} from 'keychain-sdk';
 import { HiveUtils } from './utils/hive.utils';
 
 /**

@@ -86,7 +86,7 @@ export interface RequestSignatureMessage extends SocketMessagePayload {
 
 export interface RequestSignatureSigner {
   encryptedTransaction: string; // Encrypted transaction with signer key
-  publicKey: string;
+  publicKey: string; // public key of signer
   weight: string;
 }
 
