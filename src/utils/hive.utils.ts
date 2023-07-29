@@ -1,7 +1,9 @@
-import { Client, PublicKey } from '@hiveio/dhive';
+import { Authority, Client, PublicKey } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 
 let hiveClient: Client;
+
+
 
 const getClient = () => {
   if (!hiveClient)
@@ -32,8 +34,27 @@ const getPublicKey = async(username:string, keyType: KeychainKeyTypes) =>{
   }
 }
 
+const getEncodedTxReceivers = async(authority:Authority, method:KeychainKeyTypes) =>{
+
+  let receivers:[string,number][] =[] 
+  for(let i=0; i<authority.account_auths.length; i++){
+    const pk = await getPublicKey(authority.account_auths[i][0],method);
+    if(pk){
+      receivers.push([pk.toString(),authority.account_auths[i][1]]);
+    }
+  }
+
+  for(let k=0; k<authority.key_auths.length;k++){
+    receivers.push([authority.key_auths[k][0].toString(), authority.key_auths[k][1]])
+  }
+
+  return receivers
+}
+
 export const HiveUtils = {
   getClient,
   getAccount,
-  getPublicKey
+  getPublicKey,
+  getEncodedTxReceivers
+  
 };

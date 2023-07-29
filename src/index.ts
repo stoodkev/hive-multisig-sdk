@@ -1,36 +1,32 @@
 import {
-  SocketMessageCommand,
-  SocketMessage,
-  SocketMessagePayload,
+  Authority,
+  PublicKey,
+  Signature,
+  Transaction,
+  cryptoUtils,
+} from '@hiveio/dhive';
+import { KeychainKeyTypes } from 'hive-keychain-commons';
+import { KeychainSDK, Login, SignBuffer } from 'keychain-sdk';
+import * as io from 'socket.io-client';
+import { SignatureRequest } from './interfaces/signature-request';
+import {
+  IDecodeTransaction,
+  IEncodeTransaction,
+  ISignTransaction,
+  ISignatureRequest,
+  ITransaction,
+  MultisigOptions,
   NotifyTxBroadcastedMessage,
-  SignerConnectMessage,
-  SignerConnectResponse,
-  SignerConnectResult,
-  UserNotifications,
-  UserPendingSignatureRequest,
-  UserNotification,
-  SignerConnectError,
-  SignatureRequestInitialSigner,
   RequestSignatureMessage,
   RequestSignatureSigner,
   SignTransactionMessage,
-  RefuseTransactionMessage,
-  MultisigOptions,
   SignatureRequestCallback,
-  ISignTransaction,
-  IEncodeTransaction,
   SignerConnect,
-  IDecodeTransaction,
-  ISignatureRequest,
-  ITransaction,
+  SignerConnectMessage,
+  SignerConnectResponse,
+  SocketMessageCommand,
 } from './interfaces/socket-message-interface';
-import { KeychainRequestResponse, KeychainSDK, SignBuffer } from 'keychain-sdk';
-import * as io from 'socket.io-client';
-import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { HiveUtils } from './utils/hive.utils';
-import { PublicKey, Signature, Transaction, cryptoUtils } from '@hiveio/dhive';
-import { SignatureRequest } from './interfaces/signature-request';
-import { Authority } from '@hiveio/dhive';
 
 /**
  * @description
@@ -99,9 +95,6 @@ export class HiveMultisigSDK {
         } as SignBuffer);
 
         if (signBuffer.success) {
-          console.log(
-            `SignerConnect SignBuffer: ${JSON.stringify(signBuffer)}`,
-          );
           const signerConnectParams: SignerConnectMessage = {
             publicKey: signBuffer.publicKey!,
             message: JSON.stringify(signBuffer.result).replace(`"`, ''),
@@ -308,11 +301,11 @@ export class HiveMultisigSDK {
    */
   encodeTransaction = (
     data: IEncodeTransaction,
-  ): Promise<IEncodeTransaction> => {
-    return new Promise<IEncodeTransaction>(async (resolve, reject) => {
+  ): Promise<RequestSignatureMessage> => {
+    return new Promise<RequestSignatureMessage>(async (resolve, reject) => {
       try {
         const signature = await this.keychain.signTx({
-          username: data.initiator.toString(),
+          username: data.initiator.username.toString(),
           tx: data.transaction,
           method: data.method,
         });
@@ -322,65 +315,60 @@ export class HiveMultisigSDK {
           );
           return;
         }
+
         const signedTransaction = signature.result;
-        const encodedTransaction = await this.keychain.encode({
-          username: data.initiator.toString(),
-          receiver: data.receiver.toString(),
-          message: `#${JSON.stringify(signedTransaction)}`,
-          method: data.method,
-        });
+        let receivers: [string, number][] =
+          await HiveUtils.getEncodedTxReceivers(data.authority, data.method);
+        let signerList: RequestSignatureSigner[] = [];
 
-        const signRequestList: RequestSignatureSigner[] = [];
-        const encryptedTransaction: string = encodedTransaction.result
-          ? encodedTransaction.result.toString()
-          : '';
+        if (receivers.length > 0) {
+          const encodedTransaction = await this.keychain.encodeWithKeys({
+            username: data.initiator.username.toString(),
+            publicKeys: receivers.map((k) => {
+              return k[0];
+            }),
+            message: `#${JSON.stringify(signedTransaction)}`,
+            method: data.method,
+          });
 
-        for (let i = 0; i < data.authority.account_auths.length; i++) {
-          const publicKey = await HiveUtils.getPublicKey(
-            data.authority.account_auths[i][0],
-            data.method,
-          );
-          if (publicKey) {
-            const signRequest: RequestSignatureSigner = {
-              encryptedTransaction,
-              publicKey: publicKey.toString(),
-              weight: data.authority.account_auths[i][1].toString(),
-            };
-            signRequestList.push(signRequest);
+          if (encodedTransaction.success && encodedTransaction.result) {
+
+            const resultString = JSON.stringify(encodedTransaction.result);
+            const encodedTx = JSON.parse(resultString) ;
+            for(let i=0; i<receivers.length; i++){
+              var result = encodedTx[receivers[i][0]];
+              var signer:RequestSignatureSigner = {
+                encryptedTransaction:result,
+                publicKey:receivers[i][0],
+                weight:receivers[i][1].toString()
+               }
+              signerList.push(signer);
+              
+            }
+
+            const signatureRequest: ISignatureRequest={
+              expirationDate: data.expirationDate,
+              threshold: data.authority.weight_threshold,
+              keyType: data.method,
+              signers: signerList
+            }
+
+            const requestSignMsg: RequestSignatureMessage = {
+              signatureRequest,
+              initialSigner:{
+                username: data.initiator.username,
+                publicKey: data.initiator.publicKey,
+                signature: signedTransaction.signatures[0],
+                weight: data.initiator.weight as number
+              }
+            }
+
+            resolve(requestSignMsg);
+          } else {
+            reject(new Error('Failed to encode transaction'));
+            return;
           }
         }
-
-        for (let j = 0; j < data.authority.key_auths.length; j++) {
-          const signRequest: RequestSignatureSigner = {
-            encryptedTransaction,
-            publicKey: data.authority.key_auths[j][0].toString(),
-            weight: data.authority.key_auths[j][1].toString(),
-          };
-          signRequestList.push(signRequest);
-        }
-
-        if (!encodedTransaction.success) {
-          reject(new Error('Failed to encode transaction'));
-          return;
-        }
-        const signRequestData: ISignatureRequest = {
-          expirationDate: data.expirationDate,
-          threshold: data.authority.weight_threshold,
-          keyType: data.method,
-          signers: signRequestList,
-        };
-        const encodedTrans: IEncodeTransaction = {
-          ...data,
-          transaction: { ...data.transaction },
-          method: data.method,
-          expirationDate: data.expirationDate,
-          initiator: data.initiator,
-          receiver: data.receiver,
-          authority: { ...data.authority },
-          signedTransaction: signedTransaction,
-          signRequestData: signRequestData,
-        };
-        resolve(encodedTrans);
       } catch (error: any) {
         reject(
           new Error(
@@ -420,29 +408,28 @@ export class HiveMultisigSDK {
         );
       } else {
         try {
-          const decodedTx = await this.keychain.decode({
+          const decodedMsg = await this.keychain.decode({
             username: data.username,
             message: signer.encryptedTransaction,
             method: data.signatureRequest.keyType,
           });
-          if (decodedTx.success) {
-            const data = JSON.parse(
-              JSON.stringify(decodedTx.result).replace('#', ''),
+          if (decodedMsg.success) {
+            const decodedTx = JSON.parse(
+              JSON.stringify(decodedMsg.result).replace('#', ''),
             );
-
             try {
-              const tx:ITransaction = {
+              const tx: ITransaction = {
                 id: signer.id,
                 signatureRequestId: data.signatureRequest.id,
-                transaction: data as Transaction,
+                transaction: decodedTx as Transaction,
                 method: data.signatureRequest.keyType,
-                username: data.username
-              }
+                username: data.username,
+              };
               resolve(tx);
             } catch {
               reject(
                 new Error(
-                  'Cannot parse transaction string. Invalid transaction format.',
+                  'Cannot parse transaction object. Invalid transaction format.',
                 ),
               );
             }

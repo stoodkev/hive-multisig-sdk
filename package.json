@@ -81,7 +81,6 @@
     "is-fullwidth-code-point": "^3.0.0",
     "is-stream": "^2.0.1",
     "jsbi": "^3.2.5",
-    "keychain-sdk": "^0.3.0",
     "kuler": "^2.0.0",
     "logform": "^2.5.1",
     "long": "^3.2.0",
