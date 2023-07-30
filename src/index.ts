@@ -2,6 +2,7 @@ import {
   Authority,
   PublicKey,
   Signature,
+  SignedTransaction,
   Transaction,
   cryptoUtils,
 } from '@hiveio/dhive';
@@ -420,14 +421,15 @@ export class HiveMultisigSDK {
             method: data.signatureRequest.keyType,
           });
           if (decodedMsg.success) {
-            const decodedTx = JSON.parse(
-              JSON.stringify(decodedMsg.result).replace('#', ''),
+            const jsonString =  `${decodedMsg.result}`;
+            const decodedTx:SignedTransaction = JSON.parse(
+              jsonString.replace('#', ''),
             );
             try {
               const tx: ITransaction = {
                 id: signer.id,
                 signatureRequestId: data.signatureRequest.id,
-                transaction: decodedTx as Transaction,
+                transaction: decodedTx,
                 method: data.signatureRequest.keyType,
                 username: data.username,
               };

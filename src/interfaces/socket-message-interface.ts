@@ -1,7 +1,7 @@
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { SignatureRequest } from './signature-request';
 import { KeychainOptions } from 'keychain-sdk';
-import { Signature, Transaction } from '@hiveio/dhive';
+import { Signature, Transaction,SignedTransaction } from '@hiveio/dhive';
 import * as Hive from '@hiveio/dhive';
 
 export enum SocketMessageCommand {
@@ -129,7 +129,7 @@ export interface IDecodeTransaction {
 export interface ITransaction{
   id:number,
   signatureRequestId:number;
-  transaction: Transaction;
+  transaction: SignedTransaction;
   method: KeychainKeyTypes;
   username: string;
 }
