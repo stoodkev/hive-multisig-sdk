@@ -259,8 +259,9 @@ export class HiveMultisigSDK {
               ),
             );
           }
+        }else{
+          reject(signature.error);
         }
-        reject(signature.error);
       } catch (error: any) {
         reject(
           new Error('Error occured during signTransaction: ' + error.message),
