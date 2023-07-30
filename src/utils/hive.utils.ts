@@ -1,4 +1,4 @@
-import { Authority, Client, PublicKey } from '@hiveio/dhive';
+import { Authority, Client, PublicKey, SignedTransaction, Transaction } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 
 let hiveClient: Client;
@@ -19,6 +19,12 @@ const getAccount = async (username: string) => {
   var client = getClient();
   return client.database.getAccounts([username]);
 };
+
+const broadcastTx = async(transaction:SignedTransaction) =>{
+  var client = getClient();
+  var res = await client.broadcast.send(transaction);
+  return res;
+}
 
 const getPublicKey = async(username:string, keyType: KeychainKeyTypes) =>{
   var account = await getAccount(username);
@@ -55,6 +61,7 @@ export const HiveUtils = {
   getClient,
   getAccount,
   getPublicKey,
-  getEncodedTxReceivers
+  getEncodedTxReceivers,
+  broadcastTx
   
 };

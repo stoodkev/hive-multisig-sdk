@@ -16,7 +16,6 @@ import {
   ISignatureRequest,
   ITransaction,
   MultisigOptions,
-  NotifyTxBroadcastedMessage,
   RequestSignatureMessage,
   RequestSignatureSigner,
   SignTransactionMessage,
@@ -27,6 +26,7 @@ import {
   SocketMessageCommand,
 } from './interfaces/socket-message-interface';
 import {
+  Broadcast,
   Encode,
   EncodeWithKeys,
   KeychainRequestResponse,
@@ -274,17 +274,21 @@ export class HiveMultisigSDK {
    * @description
    * Notifies the backend about a transaction being broadcasted.
    *
-   * @param message The NotifyTxBroadcastedMessage containing signatureRequestId.
+   * @param message The ITransaction containing the transaction with the appended signature of broadcasting user.
    * @returns A Promise that resolves with a string message indicating successful notification.
    */
-  notifyTransactionBroadcasted = async (
-    message: NotifyTxBroadcastedMessage,
+  broadcastTransaction = async (
+    transaction: ITransaction,
   ): Promise<string> => {
     return new Promise(async (resolve, reject) => {
+      //TODO: uncomment and test broadcast
+      // const broadcastResult = HiveUtils.broadcastTx(transaction.transaction);
+      
       try {
         this.socket.emit(
           SocketMessageCommand.NOTIFY_TRANSACTION_BROADCASTED,
-          message,
+          transaction.signatureRequestId
+          ,
           () => {
             resolve('Backend has been notified of broadcast.');
           },
@@ -428,7 +432,7 @@ export class HiveMultisigSDK {
             );
             try {
               const tx: ITransaction = {
-                id: signer.id,
+                signerId: signer.id,
                 signatureRequestId: data.signatureRequest.id,
                 transaction: decodedTx,
                 method: data.signatureRequest.keyType,
@@ -451,31 +455,6 @@ export class HiveMultisigSDK {
           );
         }
       }
-    });
-  };
-
-  /**
-   * @description
-   * Verifies the key and signature of a signer's connection message.
-   *
-   * @param message The signer connection message containing the public key, username, and signature.
-   * @returns A Promise that resolves with a boolean indicating whether the key and signature are valid.
-   */
-  verifyKey = async (message: SignerConnectMessage): Promise<boolean> => {
-    return new Promise(async (resolve, reject) => {
-      HiveUtils.getClient()
-        .keys.getKeyReferences([message.publicKey!])
-        .then((result) => {
-          if (result.accounts?.[0]?.includes(message.username)) {
-            const signature = Signature.fromString(message.message);
-            const key = PublicKey.fromString(message.publicKey);
-            if (key.verify(cryptoUtils.sha256(message.username), signature)) {
-              resolve(true);
-            }
-            reject(new Error('The signature could not be verified'));
-          }
-          reject(new Error('The signature could not be verified'));
-        });
     });
   };
 

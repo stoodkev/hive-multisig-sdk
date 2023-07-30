@@ -26,10 +26,6 @@ export interface SocketMessage {
 
 export interface SocketMessagePayload {}
 
-export interface NotifyTxBroadcastedMessage extends SocketMessagePayload {
-  signatureRequestId: number;
-}
-
 export interface SignerConnect {
   username: string;
   keyType: KeychainKeyTypes;
@@ -127,7 +123,7 @@ export interface IDecodeTransaction {
 }
 
 export interface ITransaction{
-  id:number,
+  signerId:number,
   signatureRequestId:number;
   transaction: SignedTransaction;
   method: KeychainKeyTypes;
