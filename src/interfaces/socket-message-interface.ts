@@ -117,9 +117,8 @@ export interface IEncodeTransaction {
 }
 
 export interface IDecodeTransaction {
-  signatureRequest: SignatureRequest;
+  signatureRequest: SignatureRequest[];
   username: string;
-  publicKey: string;
 }
 
 export interface ITransaction{

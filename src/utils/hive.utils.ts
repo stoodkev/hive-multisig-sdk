@@ -1,9 +1,8 @@
 import { Authority, Client, PublicKey, SignedTransaction, Transaction } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
+import { Authorities } from '../interfaces/signer';
 
 let hiveClient: Client;
-
-
 
 const getClient = () => {
   if (!hiveClient)
@@ -19,6 +18,41 @@ const getAccount = async (username: string) => {
   var client = getClient();
   return client.database.getAccounts([username]);
 };
+const getAccountAuthorities = async (username: string) => {
+
+  const account = await getAccount(username);
+  if (!account || account.length === 0) {
+    return undefined;
+  }
+  const keys:Authorities = {
+    account: account[0].name,
+    owner: account[0].owner,
+    active: account[0].active,
+    posting: account[0].posting,
+    memo_key: account[0].memo_key,
+    json_metadata: account[0].json_metadata,
+  };
+  return keys;
+};
+export const getPublicKeys = async (
+  username:string,
+  keyType: KeychainKeyTypes,
+) => {
+  const authorities = await getAccount(username);
+  if (authorities) {
+    switch (keyType) {
+      case KeychainKeyTypes.active:
+        return authorities[0].active.key_auths.map((key) => {
+          return key[0];
+        });
+      case KeychainKeyTypes.posting:
+        return authorities[0].posting.key_auths.map((key) => {
+          return key[0];
+        });
+    }
+  }
+};
+
 
 const broadcastTx = async(transaction:SignedTransaction) =>{
   var client = getClient();
@@ -62,6 +96,7 @@ export const HiveUtils = {
   getAccount,
   getPublicKey,
   getEncodedTxReceivers,
-  broadcastTx
+  broadcastTx,
+  getAccountAuthorities
   
 };

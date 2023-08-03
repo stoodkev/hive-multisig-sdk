@@ -33,7 +33,7 @@ import {
   KeychainSDK,
   SignBuffer,
 } from 'keychain-sdk';
-import { HiveUtils } from './utils/hive.utils';
+import { HiveUtils, getPublicKeys } from './utils/hive.utils';
 
 /**
  * @description
@@ -67,7 +67,7 @@ export class HiveMultisigSDK {
 
   /**
    * @description
-   * This function is called to connect to a single account or key before making a multi-signature transaction.
+   * This function is called to connect to an account before making a multi-signature transaction.
    *
    * Under the hood, this function will call the window.hive_keychain.requestSignBuffer() using KeychainSDK.
    *
@@ -86,10 +86,9 @@ export class HiveMultisigSDK {
    *   }
    * @param to username or key
    * @param keyType KeychainKeyTypes
-   * @returns SignerConnectResponse
+   * @returns signerConnect
    */
-
-  singleSignerConnect = async (
+  signerConnect = async (
     signer: SignerConnect,
   ): Promise<SignerConnectResponse> => {
     return new Promise(async (resolve, reject) => {
@@ -98,14 +97,12 @@ export class HiveMultisigSDK {
           username: signer.username,
           message: signer.username,
           method: signer.keyType,
-          title: 'Send Signer Connect Message',
         } as SignBuffer);
-
         if (signBuffer.success) {
           const signerConnectParams: SignerConnectMessage = {
-            publicKey: signBuffer.publicKey!,
+            publicKey: signBuffer.publicKey?signBuffer.publicKey:'',
             message: JSON.stringify(signBuffer.result).replace(`"`, ''),
-            username: signBuffer.data.username,
+            username: signer.username,
           };
           this.socket.emit(
             SocketMessageCommand.SIGNER_CONNECT,
@@ -125,38 +122,6 @@ export class HiveMultisigSDK {
       } catch (error: any) {
         const errorMessage =
           'Error occurred during singleSignerConnect: ' + error.message;
-        reject(new Error(errorMessage));
-      }
-    });
-  };
-
-  /**
-   * @description
-   * This function is called to connect to multiple accounts or keys before making a multi-signature transaction.
-   *
-   * Unlike singleSignerConnect, it is required to sign each message using KeychainSDK.signBuffer() first outside of this function.
-   *
-   * @param messages array of signed connect messages
-   * @returns SignerConnectResponse
-   */
-  multipleSignerConnect = async (
-    messages: SignerConnectMessage[],
-  ): Promise<SignerConnectResponse> => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        this.socket.emit(
-          SocketMessageCommand.SIGNER_CONNECT,
-          messages,
-          (signerConnectResponse: SignerConnectResponse) => {
-            if (signerConnectResponse.errors) {
-              reject(signerConnectResponse);
-            }
-            resolve(signerConnectResponse);
-          },
-        );
-      } catch (error: any) {
-        const errorMessage =
-          'Error occurred during multipleSignerConnect: ' + error.message;
         reject(new Error(errorMessage));
       }
     });
@@ -397,66 +362,70 @@ export class HiveMultisigSDK {
    *
    * @param signatureRequest
    * @param username
-   * @param publicKey
    * @returns A Promise that resolves with the decoded transaction as a Transaction object.
    */
   decodeTransaction = async (
     data: IDecodeTransaction,
-  ): Promise<ITransaction> => {
+  ): Promise<ITransaction[]> => {
     return new Promise(async (resolve, reject) => {
-      if (!data.signatureRequest) {
+      if (data.signatureRequest.length<=0) {
         reject(
           new Error(
             'You passed an empty signatureRequest in decodeTransaction.',
           ),
         );
       }
-      const signer = data.signatureRequest.signers.find(
-        (s) => s.publicKey === data.publicKey,
-      );
-      if (!signer) {
-        reject(
-          new Error('The publikKey cannot be found in the list of signers.'),
-        );
-      } else {
-        try {
-          const decodedMsg = await this.keychain.decode({
-            username: data.username,
-            message: signer.encryptedTransaction,
-            method: data.signatureRequest.keyType,
-          });
-          if (decodedMsg.success) {
-            const jsonString =  `${decodedMsg.result}`;
-            const decodedTx:SignedTransaction = JSON.parse(
-              jsonString.replace('#', ''),
-            );
-            try {
-              const tx: ITransaction = {
-                signerId: signer.id,
-                signatureRequestId: data.signatureRequest.id,
-                transaction: decodedTx,
-                method: data.signatureRequest.keyType,
-                username: data.username,
-              };
-              resolve(tx);
-            } catch {
-              reject(
-                new Error(
-                  'Cannot parse transaction object. Invalid transaction format.',
-                ),
-              );
+      try{
+        let transactions: ITransaction[] = [];
+        for(var k = 0; k<data.signatureRequest.length; k++){
+          const signRequest = data.signatureRequest[k];
+          const publicKeys = await getPublicKeys(data.username,signRequest.keyType);
+          if(!publicKeys){reject(new Error(`No publicKey can be found for ${data.username}}`))}
+          if(signRequest.initiator !== data.username){ //dont decode for initiator
+            for(var i = 0; i < signRequest.signers.length; i++){ //loop through signers
+              const signer = signRequest.signers[i];
+              if(publicKeys?.includes(signer.publicKey)){ // check if the signer is one of my publickey
+                try{
+                  const decodedMsg = await this.keychain.decode({
+                    username: data.username,
+                    message: signer.encryptedTransaction,
+                    method: signRequest.keyType
+                  })
+                  if(decodedMsg.success){
+                    const jsonString =  `${decodedMsg.result}`;
+                    const decodedTx:SignedTransaction = JSON.parse(
+                      jsonString.replace('#', ''),
+                    );
+                    const tx: ITransaction = {
+                      signerId: signer.id,
+                      signatureRequestId: signRequest.id,
+                      transaction: decodedTx,
+                      method: signRequest.keyType,
+                      username: data.username,
+                    };
+                    transactions.push(tx);
+                  }
+                }catch (error:any){
+                  reject(
+                    new Error(
+                      'An error occured during decodeTransaction: ' + error.message,
+                    ),
+                  );
+                }
+              }
             }
           }
-        } catch (error: any) {
-          reject(
-            new Error(
-              'An error occured during decodeTransaction: ' + error.message,
-            ),
-          );
         }
+        resolve(transactions);
+      }catch(error:any){
+        reject(
+          new Error(
+            `Error while decoding transactions: ${error}`
+          ))
       }
-    });
-  };
+      
+  })
+};
 
   /**
    * @description
