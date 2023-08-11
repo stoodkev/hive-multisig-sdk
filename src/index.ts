@@ -537,11 +537,19 @@ export class HiveMultisigSDK {
       }
     });
   };
-
+  /**
+   * @description
+   * Get the username that will request the broadcast of a given tx
+   *
+   * @param tx A Hive transaction
+   * @returnsA username if a single one is found, undefined if the tx is badly formatted or if two different signers are needed.
+   * Abort operations in these cases.
+   */
   static getUsernameFromTransaction = (tx: Transaction) => {
     let username;
-
+    if (!tx.operations || !tx.operations.length) return;
     for (const op of tx.operations) {
+      if (!op[0] || !op[1] || typeof op[1] !== 'object') return;
       let newUsername;
       switch (op[0]) {
         case 'account_create':
@@ -701,7 +709,7 @@ export class HiveMultisigSDK {
           newUsername = (op as RecurrentTransferOperation)[1].from;
           break;
       }
-      if (username && username !== newUsername) username = undefined;
+      if (username && username !== newUsername) return;
       else username = newUsername;
     }
     return username;
