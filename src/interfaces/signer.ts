@@ -12,7 +12,7 @@ export interface Signer {
   signatureRequest: SignatureRequest;
 }
 
-export interface Authorities   {
+export interface Authorities {
   account:string;
   owner:  Hive.AuthorityType;
   active: Hive.AuthorityType;

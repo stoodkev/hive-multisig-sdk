@@ -375,7 +375,7 @@ export class HiveMultisigSDK {
           );
           if (!publicKeys) {
             reject(
-              new Error(`No publicKey can be found for ${data.username}}`),
+              new Error(`No publicKey can be found for ${data.username}`),
             );
           }
           if (signRequest.initiator !== data.username) {
