@@ -432,12 +432,9 @@ export class HiveMultisigSDK {
             );
           }
           if (signRequest.initiator !== data.username) {
-            //dont decode for initiator
             for (var i = 0; i < signRequest.signers.length; i++) {
-              //loop through signers
               const signer = signRequest.signers[i];
               if (publicKeys?.includes(signer.publicKey)) {
-                // check if the signer is one of my publickey
                 try {
                   const decodedMsg = await this.keychain.decode({
                     username: data.username,
@@ -450,14 +447,17 @@ export class HiveMultisigSDK {
                     const decodedTx: SignedTransaction = JSON.parse(
                       jsonString.replace('#', ''),
                     );
-                    const tx: ITransaction = {
-                      signer: signer,
-                      signatureRequestId: signRequest.id,
-                      transaction: decodedTx,
-                      method: signRequest.keyType,
-                      username: data.username,
-                    };
-                    transactions.push(tx);
+                    const validAuth = await HiveMultisigSDK.validateInitiatorAuthorityOverTransaction(signRequest.initiator,signRequest.keyType,decodedTx);
+                    if(validAuth){
+                      const tx: ITransaction = {
+                        signer: signer,
+                        signatureRequestId: signRequest.id,
+                        transaction: decodedTx,
+                        method: signRequest.keyType,
+                        username: data.username,
+                      };
+                      transactions.push(tx);
+                    }
                   }
                 } catch (error: any) {
                   reject(
@@ -537,6 +537,53 @@ export class HiveMultisigSDK {
       }
     });
   };
+
+  static validateInitiatorAuthorityOverTransaction = async (intiator:string, keyType:KeychainKeyTypes, transaction:SignedTransaction)=>{
+    const txUsername =  HiveMultisigSDK.getUsernameFromTransaction(transaction);
+    if(!txUsername){return undefined;}
+      const initiatorAuthorities = await HiveMultisigSDK.getAuthorities(intiator,keyType);
+      if(!initiatorAuthorities){ return undefined;}
+      for(const [u,w] of initiatorAuthorities){
+        if(txUsername === u){ return true;}
+      }
+      return false;
+  }
+
+  /**
+   * @description
+   * Returns the list of authorities in a form of [string,number] tuple of username/key and weight with respect to key type.
+   * 
+   * @param username the username owner account
+   * @param keyType the keytype of authorities
+   * @returns 
+   */
+  static getAuthorities = async(username:string, keyType:KeychainKeyTypes)=>{
+    const authorities = await HiveUtils.getAccount(username);
+    let auths: [string, number][] = [];
+    if(authorities){
+      switch(keyType){
+        case KeychainKeyTypes.active:
+          for(const [acc, weight] of authorities[0].active.account_auths){
+            auths.push([acc,weight]);
+          }
+          for(const [key, weight] of authorities[0].active.key_auths){
+            auths.push([key.toString(),weight]);
+          }
+          return auths;
+        case KeychainKeyTypes.posting:
+          for(const [acc,weight] of authorities[0].posting.account_auths){
+            auths.push([acc,weight]);
+          }
+          for(const [key,weight] of authorities[0].posting.key_auths){
+            auths.push([key.toString(),weight]);
+          }
+          return auths;
+        default: return undefined;
+      }
+    }
+    return undefined;
+  }
+  
   /**
    * @description
    * Get the username that will request the broadcast of a given tx
