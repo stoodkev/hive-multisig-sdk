@@ -34,19 +34,6 @@ const getAccountAuthorities = async (username: string) => {
   };
   return keys;
 };
-export const getAuthorities = async(username:string, keyType:KeychainKeyTypes)=>{
-  const authorities = await getAccount(username);
-  if(authorities){
-    switch(keyType){
-      case KeychainKeyTypes.active:
-        return authorities[0].active;
-      case KeychainKeyTypes.posting:
-        return authorities[1].posting;
-      default: return undefined;
-    }
-  }
-  return undefined;
-}
 
 export const getPublicKeys = async (
   username:string,
