@@ -63,6 +63,7 @@ import {
   ISignatureRequest,
   ITransaction,
   MultisigOptions,
+  NotifyTxBroadcastedMessage,
   RequestSignatureMessage,
   RequestSignatureSigner,
   SignTransactionMessage,
@@ -83,6 +84,7 @@ import { HiveUtils, getPublicKeys } from './utils/hive.utils';
  * @class
  */
 export class HiveMultisigSDK {
+  private static instance: HiveMultisigSDK;
   window: Window;
   options?: MultisigOptions;
   keychain: KeychainSDK;
@@ -103,7 +105,15 @@ export class HiveMultisigSDK {
       console.log(`Socket Connected with ID: ${this.socket.id}`);
     });
   }
-
+  public static getInstance(
+    window: Window,
+    options?: MultisigOptions,
+  ): HiveMultisigSDK {
+    if (!HiveMultisigSDK.instance) {
+      HiveMultisigSDK.instance = new HiveMultisigSDK(window, options);
+    }
+    return HiveMultisigSDK.instance;
+  }
   /**
    * @description
    * This function is called to connect to an account before making a multi-signature transaction.
@@ -294,12 +304,16 @@ export class HiveMultisigSDK {
       //const broadcastResult = await HiveUtils.broadcastTx(transaction.transaction);
 
       try {
+        var message: NotifyTxBroadcastedMessage = {
+          signatureRequestId: transaction.signatureRequestId,
+        };
         this.socket.emit(
           SocketMessageCommand.NOTIFY_TRANSACTION_BROADCASTED,
-          transaction.signatureRequestId,
+          message,
           () => {
             //TODO: uncomment and test broadcast
             // resolve(broadcastResult);
+            console.log('Broadcasted');
             resolve(true);
           },
         );
@@ -427,9 +441,7 @@ export class HiveMultisigSDK {
             signRequest.keyType,
           );
           if (!publicKeys) {
-            reject(
-              new Error(`No publicKey can be found for ${data.username}`),
-            );
+            reject(new Error(`No publicKey can be found for ${data.username}`));
           }
           if (signRequest.initiator !== data.username) {
             for (var i = 0; i < signRequest.signers.length; i++) {
@@ -447,8 +459,16 @@ export class HiveMultisigSDK {
                     const decodedTx: SignedTransaction = JSON.parse(
                       jsonString.replace('#', ''),
                     );
-                    const validAuth = await HiveMultisigSDK.validateInitiatorAuthorityOverTransaction(signRequest.initiator,signRequest.keyType,decodedTx);
-                    if(validAuth){
+                    const validAuth =
+                      await HiveMultisigSDK.validateInitiatorAuthorityOverTransaction(
+                        signRequest.initiator,
+                        signRequest.keyType,
+                        decodedTx,
+                      );
+                    if (validAuth) {
+                      console.log(
+                        `Initiator ${signRequest.initiator} has authority over ${decodedTx.operations[0]}}`,
+                      );
                       const tx: ITransaction = {
                         signer: signer,
                         signatureRequestId: signRequest.id,
@@ -538,52 +558,80 @@ export class HiveMultisigSDK {
     });
   };
 
-  static validateInitiatorAuthorityOverTransaction = async (intiator:string, keyType:KeychainKeyTypes, transaction:SignedTransaction)=>{
-    const txUsername =  HiveMultisigSDK.getUsernameFromTransaction(transaction);
-    if(!txUsername){return undefined;}
-      const initiatorAuthorities = await HiveMultisigSDK.getAuthorities(intiator,keyType);
-      if(!initiatorAuthorities){ return undefined;}
-      for(const [u,w] of initiatorAuthorities){
-        if(txUsername === u){ return true;}
+  /**
+   * @description
+   * Validates if the initiator has an authority over the username indicated in the transaction as sender/from.
+   * @param initiator
+   * @param keyType
+   * @param transaction
+   * @returns True if the initiator is the sender itself or sender is one of initiator's authorities. Otherwise will return false.
+   */
+  static validateInitiatorAuthorityOverTransaction = async (
+    initiator: string,
+    keyType: KeychainKeyTypes,
+    transaction: SignedTransaction,
+  ) => {
+    const txUsername = HiveMultisigSDK.getUsernameFromTransaction(transaction);
+    if (!txUsername) {
+      return undefined;
+    }
+    if (txUsername === initiator) {
+      return true;
+    }
+    const initiatorAuthorities = await HiveMultisigSDK.getAuthorities(
+      initiator,
+      keyType,
+    );
+    if (!initiatorAuthorities) {
+      return undefined;
+    }
+    for (const [u, w] of initiatorAuthorities) {
+      if (txUsername === u) {
+        return true;
       }
-      return false;
-  }
+    }
+    return false;
+  };
 
   /**
    * @description
    * Returns the list of authorities in a form of [string,number] tuple of username/key and weight with respect to key type.
-   * 
+   *
    * @param username the username owner account
    * @param keyType the keytype of authorities
-   * @returns 
+   * @returns
    */
-  static getAuthorities = async(username:string, keyType:KeychainKeyTypes)=>{
+  static getAuthorities = async (
+    username: string,
+    keyType: KeychainKeyTypes,
+  ) => {
     const authorities = await HiveUtils.getAccount(username);
     let auths: [string, number][] = [];
-    if(authorities){
-      switch(keyType){
+    if (authorities) {
+      switch (keyType) {
         case KeychainKeyTypes.active:
-          for(const [acc, weight] of authorities[0].active.account_auths){
-            auths.push([acc,weight]);
+          for (const [acc, weight] of authorities[0].active.account_auths) {
+            auths.push([acc, weight]);
           }
-          for(const [key, weight] of authorities[0].active.key_auths){
-            auths.push([key.toString(),weight]);
+          for (const [key, weight] of authorities[0].active.key_auths) {
+            auths.push([key.toString(), weight]);
           }
           return auths;
         case KeychainKeyTypes.posting:
-          for(const [acc,weight] of authorities[0].posting.account_auths){
-            auths.push([acc,weight]);
+          for (const [acc, weight] of authorities[0].posting.account_auths) {
+            auths.push([acc, weight]);
           }
-          for(const [key,weight] of authorities[0].posting.key_auths){
-            auths.push([key.toString(),weight]);
+          for (const [key, weight] of authorities[0].posting.key_auths) {
+            auths.push([key.toString(), weight]);
           }
           return auths;
-        default: return undefined;
+        default:
+          return undefined;
       }
     }
     return undefined;
-  }
-  
+  };
+
   /**
    * @description
    * Get the username that will request the broadcast of a given tx

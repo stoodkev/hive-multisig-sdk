@@ -1,5 +1,5 @@
-import { SignatureRequest } from './signature-request';
 import * as Hive from '@hiveio/dhive';
+import { SignatureRequest } from './signature-request';
 
 export interface Signer {
   id: number;
@@ -9,14 +9,13 @@ export interface Signer {
   signature?: string;
   refused?: boolean;
   notified?: boolean;
-  signatureRequest: SignatureRequest;
 }
 
 export interface Authorities {
-  account:string;
-  owner:  Hive.AuthorityType;
+  account: string;
+  owner: Hive.AuthorityType;
   active: Hive.AuthorityType;
   posting: Hive.AuthorityType;
-  memo_key: string|Hive.PublicKey;
+  memo_key: string | Hive.PublicKey;
   json_metadata: string;
 }

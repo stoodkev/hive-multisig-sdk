@@ -14,7 +14,6 @@ export enum SocketMessageCommand {
   NOTIFY_TRANSACTION_BROADCASTED = 'notify_transaction_broadcasted',
   TRANSACTION_BROADCASTED_NOTIFICATION = 'transaction_broadcasted_notification',
 }
-
 export interface MultisigOptions {
   keychainOptions?: KeychainOptions;
   socketAddress: string;
@@ -23,6 +22,10 @@ export interface MultisigOptions {
 export interface SocketMessage {
   command: string;
   payload: SocketMessagePayload;
+}
+
+export interface NotifyTxBroadcastedMessage extends SocketMessagePayload {
+  signatureRequestId: number;
 }
 
 export interface SocketMessagePayload {}
