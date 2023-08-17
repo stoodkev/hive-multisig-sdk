@@ -423,7 +423,7 @@ export class HiveMultisigSDK {
    */
   decodeTransaction = async (
     data: IDecodeTransaction,
-  ): Promise<ITransaction[]> => {
+  ): Promise<ITransaction[]|undefined> => {
     return new Promise(async (resolve, reject) => {
       if (data.signatureRequest.length <= 0) {
         reject(
@@ -443,7 +443,6 @@ export class HiveMultisigSDK {
           if (!publicKeys) {
             reject(new Error(`No publicKey can be found for ${data.username}`));
           }
-          if (signRequest.initiator !== data.username) {
             for (var i = 0; i < signRequest.signers.length; i++) {
               const signer = signRequest.signers[i];
               if (publicKeys?.includes(signer.publicKey)) {
@@ -489,9 +488,12 @@ export class HiveMultisigSDK {
                 }
               }
             }
-          }
         }
-        resolve(transactions);
+        if(transactions.length===0){
+          resolve(undefined);
+        }else{
+          resolve(transactions);
+        }
       } catch (error: any) {
         reject(new Error(`Error while decoding transactions: ${error}`));
       }
