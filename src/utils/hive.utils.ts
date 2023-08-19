@@ -81,12 +81,13 @@ const getEncodedTxReceivers = async(authority:Authority, method:KeychainKeyTypes
 
   let receivers:[string,number][] =[] 
   for(let i=0; i<authority.account_auths.length; i++){
-    const pk = await getPublicKey(authority.account_auths[i][0],method);
+    const pk = await getPublicKeys(authority.account_auths[i][0],method);
     if(pk){
-      receivers.push([pk.toString(),authority.account_auths[i][1]]);
+      for(let k = 0 ; k<pk.length; k++){
+        receivers.push([pk[k].toString(),authority.account_auths[i][1]]);
+      }
     }
   }
-
   for(let k=0; k<authority.key_auths.length;k++){
     receivers.push([authority.key_auths[k][0].toString(), authority.key_auths[k][1]])
   }

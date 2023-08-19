@@ -1,8 +1,8 @@
-import { KeychainKeyTypes } from 'hive-keychain-commons';
-import { SignatureRequest } from './signature-request';
-import { KeychainOptions } from 'keychain-sdk';
-import { Signature, Transaction,SignedTransaction } from '@hiveio/dhive';
 import * as Hive from '@hiveio/dhive';
+import { SignedTransaction, Transaction } from '@hiveio/dhive';
+import { KeychainKeyTypes } from 'hive-keychain-commons';
+import { KeychainOptions } from 'keychain-sdk';
+import { SignatureRequest } from './signature-request';
 import { Signer } from './signer';
 
 export enum SocketMessageCommand {
