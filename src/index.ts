@@ -459,15 +459,11 @@ export class HiveMultisigSDK {
                       jsonString.replace('#', ''),
                     );
                     const validAuth =
-                      await HiveMultisigSDK.validateInitiatorAuthorityOverTransaction(
-                        signRequest.initiator,
+                      await HiveMultisigSDK.validateUserAuthorityOverTransaction(
                         signRequest.keyType,
                         decodedTx,
                       );
                     if (validAuth) {
-                      console.log(
-                        `Initiator ${signRequest.initiator} has authority over ${decodedTx.operations[0]}}`,
-                      );
                       const tx: ITransaction = {
                         signer: signer,
                         signatureRequestId: signRequest.id,
@@ -568,8 +564,7 @@ export class HiveMultisigSDK {
    * @param transaction
    * @returns True if the initiator is the sender itself or sender is one of initiator's authorities. Otherwise will return false.
    */
-  static validateInitiatorAuthorityOverTransaction = async (
-    initiator: string,
+  static validateUserAuthorityOverTransaction = async (
     keyType: KeychainKeyTypes,
     transaction: SignedTransaction,
   ) => {
@@ -577,17 +572,14 @@ export class HiveMultisigSDK {
     if (!txUsername) {
       return undefined;
     }
-    if (txUsername === initiator) {
-      return true;
-    }
-    const initiatorAuthorities = await HiveMultisigSDK.getAuthorities(
-      initiator,
+    const userAuthorities = await HiveMultisigSDK.getAuthorities(
+      txUsername.toString(),
       keyType,
     );
-    if (!initiatorAuthorities) {
+    if (!userAuthorities) {
       return undefined;
     }
-    for (const [u, w] of initiatorAuthorities) {
+    for (const [u, w] of userAuthorities) {
       if (txUsername === u) {
         return true;
       }
