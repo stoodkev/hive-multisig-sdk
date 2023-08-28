@@ -130,7 +130,7 @@ const getPublicKey = async(username:string, keyType: KeychainKeyTypes) =>{
   }
 }
 
-const getEncodedTxReceivers = async(username:string, method:KeychainKeyTypes) =>{
+const getPotentialSigners = async(username:string, method:KeychainKeyTypes) =>{
   const authorities = await getAccountAuthorities(username);
   const authority = method === KeychainKeyTypes.active? authorities?.active: authorities?.posting;
   let receivers:[string,number][] =[] 
@@ -155,7 +155,7 @@ export const HiveUtils = {
   getClient,
   getAccount,
   getPublicKey,
-  getEncodedTxReceivers,
+  getPotentialSigners,
   broadcastTx,
   getAccountAuthorities,
   getThreshold,
