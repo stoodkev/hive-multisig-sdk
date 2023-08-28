@@ -355,14 +355,14 @@ export class HiveMultisigSDK {
         const broadcaster = HiveMultisigSDK.getUsernameFromTransaction(data.transaction);
         if(broadcaster){
           const threshold = await HiveUtils.getThreshold(broadcaster.toString(),data.method);
-          let receivers: [string, number][] =
-            await HiveUtils.getEncodedTxReceivers(broadcaster.toString(), data.method);
+          let potentialSigners: [string, number][] =
+            await HiveUtils.getPotentialSigners(broadcaster.toString(), data.method);
           let signerList: RequestSignatureSigner[] = [];
           
-          if (receivers.length > 0) {
+          if (potentialSigners.length > 0) {
             const encodedTransaction = await this.keychain.encodeWithKeys({
               username: broadcaster.toString(),
-              publicKeys: receivers.map((k) => {
+              publicKeys: potentialSigners.map((k) => {
                 return k[0];
               }),
               message: `#${JSON.stringify(signedTransaction)}`,
@@ -372,12 +372,12 @@ export class HiveMultisigSDK {
             if (encodedTransaction.success && encodedTransaction.result) {
               const resultString = JSON.stringify(encodedTransaction.result);
               const encodedTx = JSON.parse(resultString);
-              for (let i = 0; i < receivers.length; i++) {
-                var result = encodedTx[receivers[i][0]];
+              for (let i = 0; i < potentialSigners.length; i++) {
+                var result = encodedTx[potentialSigners[i][0]];
                 var signer: RequestSignatureSigner = {
                   encryptedTransaction: result,
-                  publicKey: receivers[i][0],
-                  weight: receivers[i][1].toString(),
+                  publicKey: potentialSigners[i][0],
+                  weight: potentialSigners[i][1].toString(),
                 };
                 signerList.push(signer);
               }
@@ -441,16 +441,16 @@ export class HiveMultisigSDK {
         let transactions: ITransaction[] = [];
         for (var k = 0; k < data.signatureRequest.length; k++) {
           const signRequest = data.signatureRequest[k];
-          const publicKeys = await getPublicKeys(
+          const signerPublicKeys = await getPublicKeys(
             data.username,
             signRequest.keyType,
           );
-          if (!publicKeys) {
+          if (!signerPublicKeys) {
             reject(new Error(`No publicKey can be found for ${data.username}`));
           }
             for (var i = 0; i < signRequest.signers.length; i++) {
               const signer = signRequest.signers[i];
-              if (publicKeys?.includes(signer.publicKey)) {
+              if (signerPublicKeys?.includes(signer.publicKey)) {
                 try {
                   const decodedMsg = await this.keychain.decode({
                     username: data.username,
@@ -561,37 +561,6 @@ export class HiveMultisigSDK {
     });
   };
 
-  /**
-   * @description
-   * Validates if the initiator has an authority over the username indicated in the transaction as sender/from.
-   * @param initiator
-   * @param keyType
-   * @param transaction
-   * @returns True if the initiator is the sender itself or sender is one of initiator's authorities. Otherwise will return false.
-   */
-  static validateUserAuthorityOverTransaction = async (
-    keyType: KeychainKeyTypes,
-    transaction: SignedTransaction,
-  ) => {
-    const txUsername = HiveMultisigSDK.getUsernameFromTransaction(transaction);
-    if (!txUsername) {
-      return undefined;
-    }
-    const userAuthorities = await HiveMultisigSDK.getAuthorities(
-      txUsername.toString(),
-      keyType,
-    );
-    if (!userAuthorities) {
-      return undefined;
-    }
-    for (const [u, w] of userAuthorities) {
-      if (txUsername === u) {
-        return true;
-      }
-    }
-    return false;
-  };
-
 
   static validateInitiatorOverBroadcaster = async (initiator:string,keyType: KeychainKeyTypes,
     transaction: SignedTransaction,)=>{
@@ -599,18 +568,27 @@ export class HiveMultisigSDK {
       if (!txUsername) {
         return undefined;
       }
-      const userAuthorities = await HiveMultisigSDK.getAuthorities(
+      const initiatorPublicKeys = await HiveUtils.getPublicKeys(initiator,keyType);
+      const userAuthorities = await HiveUtils.getPotentialSigners(
         txUsername.toString(),
         keyType,
       );
+      if(!initiatorPublicKeys){
+        return undefined;
+      }
       if (!userAuthorities) {
         return undefined;
       }
-      for (const [u, w] of userAuthorities) {
-        if (initiator === u && w > 0) {
-          return true;
+
+      //check if any of the initiator public keys will match a public key in user authorities
+      for(const key of initiatorPublicKeys){
+        for (const [u, w] of userAuthorities) {
+          if (key === u && w > 0) {
+            return true;
+          }
         }
       }
+     
       return false;
   }
   /**
