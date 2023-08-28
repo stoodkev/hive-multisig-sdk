@@ -35,6 +35,59 @@ const getAccountAuthorities = async (username: string) => {
   return keys;
 };
 
+const getThreshold = async (username:string, keyType: KeychainKeyTypes) =>{
+  const authorities = await getAccountAuthorities(username);
+  if(authorities){
+    switch(keyType){
+      case KeychainKeyTypes.active:
+        return authorities?.active.weight_threshold;
+      case KeychainKeyTypes.posting:
+        return authorities?.posting.weight_threshold;
+    }
+  }
+  return undefined;
+}
+
+const getAuthorityWeightOverUser = async (authority:string|PublicKey, username:string, keyType: KeychainKeyTypes)=>{
+  const authorities = await getAccountAuthorities(username);
+  if(authorities){
+    switch(keyType){
+      case KeychainKeyTypes.active:
+        if(authority.toString().startsWith('STM')){
+          for(const [u,w] of authorities.active.key_auths){
+            if(authority === u){
+              return w;
+            }
+          }
+        }
+        else{
+          for(const [u,w] of authorities.active.account_auths){
+            if(authority === u){
+              return w;
+            }
+          }
+        }
+        
+      case KeychainKeyTypes.posting:
+        if(authority.toString().startsWith('STM')){
+          for(const [u,w] of authorities.posting.key_auths){
+            if(authority === u){
+              return w;
+            }
+          }
+        }
+        else{
+          for(const [u,w] of authorities.posting.account_auths){
+            if(authority === u){
+              return w;
+            }
+          }
+        }
+    }
+  }
+  return undefined;
+}
+
 export const getPublicKeys = async (
   username:string,
   keyType: KeychainKeyTypes,
@@ -77,19 +130,22 @@ const getPublicKey = async(username:string, keyType: KeychainKeyTypes) =>{
   }
 }
 
-const getEncodedTxReceivers = async(authority:Authority, method:KeychainKeyTypes) =>{
-
+const getEncodedTxReceivers = async(username:string, method:KeychainKeyTypes) =>{
+  const authorities = await getAccountAuthorities(username);
+  const authority = method === KeychainKeyTypes.active? authorities?.active: authorities?.posting;
   let receivers:[string,number][] =[] 
-  for(let i=0; i<authority.account_auths.length; i++){
-    const pk = await getPublicKeys(authority.account_auths[i][0],method);
-    if(pk){
-      for(let k = 0 ; k<pk.length; k++){
-        receivers.push([pk[k].toString(),authority.account_auths[i][1]]);
+  if(authority){
+      for(let i=0; i<authority.account_auths.length; i++){
+        const pk = await getPublicKeys(authority.account_auths[i][0],method);
+        if(pk){
+          for(let k = 0 ; k<pk.length; k++){
+            receivers.push([pk[k].toString(),authority.account_auths[i][1]]);
+          }
+        }
       }
-    }
-  }
-  for(let k=0; k<authority.key_auths.length;k++){
-    receivers.push([authority.key_auths[k][0].toString(), authority.key_auths[k][1]])
+      for(let k=0; k<authority.key_auths.length;k++){
+        receivers.push([authority.key_auths[k][0].toString(), authority.key_auths[k][1]])
+      }
   }
 
   return receivers
@@ -101,6 +157,7 @@ export const HiveUtils = {
   getPublicKey,
   getEncodedTxReceivers,
   broadcastTx,
-  getAccountAuthorities
-  
+  getAccountAuthorities,
+  getThreshold,
+  getAuthorityWeightOverUser,
 };

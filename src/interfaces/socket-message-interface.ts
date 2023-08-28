@@ -114,10 +114,9 @@ export interface IEncodeTransaction {
   expirationDate: Date;
   initiator: {
     username:string,
-    publicKey:string,
-    weight:string|number,
+    publicKey: string;
+    weight: number|string
   }
-  authority: Hive.Authority;
 }
 
 export interface IDecodeTransaction {

@@ -330,8 +330,7 @@ export class HiveMultisigSDK {
 
   /**
    * @description
-   * Encodes the transaction data using the keychain.
-   *
+   * Encodes the transaction data using the keychain. 
    * @param data The object containing transaction encoding details.
    * @returns A Promise that resolves with the encoded transaction as a string.
    */
@@ -340,8 +339,9 @@ export class HiveMultisigSDK {
   ): Promise<RequestSignatureMessage> => {
     return new Promise<RequestSignatureMessage>(async (resolve, reject) => {
       try {
+
         const signature = await this.keychain.signTx({
-          username: data.initiator.username.toString(),
+          username: data.initiator.toString(),
           tx: data.transaction,
           method: data.method,
         });
@@ -351,57 +351,67 @@ export class HiveMultisigSDK {
           );
           return;
         }
-
         const signedTransaction = signature.result;
-        let receivers: [string, number][] =
-          await HiveUtils.getEncodedTxReceivers(data.authority, data.method);
-        let signerList: RequestSignatureSigner[] = [];
+        const isValidInitiator = await HiveMultisigSDK.validateInitiatorOverBroadcaster(data.initiator.username,data.method,signedTransaction);
+        const broadcaster = HiveMultisigSDK.getUsernameFromTransaction(data.transaction);
+        if(isValidInitiator&&broadcaster){
+          const threshold = await HiveUtils.getThreshold(broadcaster.toString(),data.method);
+          const initiatorWeight = await HiveUtils.getAuthorityWeightOverUser(data.initiator.username, broadcaster.toString(),data.method);
+          let receivers: [string, number][] =
+            await HiveUtils.getEncodedTxReceivers(broadcaster.toString(), data.method);
+          let signerList: RequestSignatureSigner[] = [];
+          
+          if (receivers.length > 0) {
+            const encodedTransaction = await this.keychain.encodeWithKeys({
+              username: broadcaster.toString(),
+              publicKeys: receivers.map((k) => {
+                return k[0];
+              }),
+              message: `#${JSON.stringify(signedTransaction)}`,
+              method: data.method,
+            });
 
-        if (receivers.length > 0) {
-          const encodedTransaction = await this.keychain.encodeWithKeys({
-            username: data.initiator.username.toString(),
-            publicKeys: receivers.map((k) => {
-              return k[0];
-            }),
-            message: `#${JSON.stringify(signedTransaction)}`,
-            method: data.method,
-          });
-
-          if (encodedTransaction.success && encodedTransaction.result) {
-            const resultString = JSON.stringify(encodedTransaction.result);
-            const encodedTx = JSON.parse(resultString);
-            for (let i = 0; i < receivers.length; i++) {
-              var result = encodedTx[receivers[i][0]];
-              var signer: RequestSignatureSigner = {
-                encryptedTransaction: result,
-                publicKey: receivers[i][0],
-                weight: receivers[i][1].toString(),
+            if (encodedTransaction.success && encodedTransaction.result) {
+              const resultString = JSON.stringify(encodedTransaction.result);
+              const encodedTx = JSON.parse(resultString);
+              for (let i = 0; i < receivers.length; i++) {
+                var result = encodedTx[receivers[i][0]];
+                var signer: RequestSignatureSigner = {
+                  encryptedTransaction: result,
+                  publicKey: receivers[i][0],
+                  weight: receivers[i][1].toString(),
+                };
+                signerList.push(signer);
+              }
+              const signatureRequest: ISignatureRequest = {
+                expirationDate: data.expirationDate,
+                threshold: threshold as number,
+                keyType: data.method,
+                signers: signerList,
               };
-              signerList.push(signer);
+
+              const requestSignMsg: RequestSignatureMessage = {
+                signatureRequest,
+                initialSigner: {
+                  username: data.initiator.username.toString(),
+                  publicKey: data.initiator.publicKey,
+                  signature: signedTransaction.signatures[0],
+                  weight: initiatorWeight as number,
+                },
+              };
+
+              resolve(requestSignMsg);
+            } else {
+              reject(new Error('Failed to encode transaction'));
+              return;
             }
-
-            const signatureRequest: ISignatureRequest = {
-              expirationDate: data.expirationDate,
-              threshold: data.authority.weight_threshold,
-              keyType: data.method,
-              signers: signerList,
-            };
-
-            const requestSignMsg: RequestSignatureMessage = {
-              signatureRequest,
-              initialSigner: {
-                username: data.initiator.username,
-                publicKey: data.initiator.publicKey,
-                signature: signedTransaction.signatures[0],
-                weight: data.initiator.weight as number,
-              },
-            };
-
-            resolve(requestSignMsg);
-          } else {
-            reject(new Error('Failed to encode transaction'));
-            return;
-          }
+        }
+        }
+        if(!isValidInitiator){
+          reject(`Initiator:${data.initiator} does not have authority over broadcaster ${broadcaster?.toString()}`);
+        }
+        if(!broadcaster){
+          reject(`Failed to get broadcaster from transaction`);
         }
       } catch (error: any) {
         reject(
@@ -587,6 +597,27 @@ export class HiveMultisigSDK {
     return false;
   };
 
+
+  static validateInitiatorOverBroadcaster = async (initiator:string,keyType: KeychainKeyTypes,
+    transaction: SignedTransaction,)=>{
+      const txUsername = HiveMultisigSDK.getUsernameFromTransaction(transaction);
+      if (!txUsername) {
+        return undefined;
+      }
+      const userAuthorities = await HiveMultisigSDK.getAuthorities(
+        txUsername.toString(),
+        keyType,
+      );
+      if (!userAuthorities) {
+        return undefined;
+      }
+      for (const [u, w] of userAuthorities) {
+        if (initiator === u && w > 0) {
+          return true;
+        }
+      }
+      return false;
+  }
   /**
    * @description
    * Returns the list of authorities in a form of [string,number] tuple of username/key and weight with respect to key type.
