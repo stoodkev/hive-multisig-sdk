@@ -114,7 +114,8 @@ export interface IEncodeTransaction {
   expirationDate: Date;
   initiator: {
     username:string,
-    publicKey: string;
+    publicKey: string,
+    weight: number
   }
 }
 

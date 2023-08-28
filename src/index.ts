@@ -52,6 +52,7 @@ import {
   WitnessSetPropertiesOperation,
   WitnessUpdateOperation,
 } from '@hiveio/dhive';
+import axios from 'axios';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { KeychainSDK, SignBuffer } from 'keychain-sdk';
 import * as io from 'socket.io-client';
@@ -114,6 +115,39 @@ export class HiveMultisigSDK {
     }
     return HiveMultisigSDK.instance;
   }
+
+  getTransactions = async (
+    signer: SignerConnect,
+    )=>{
+      const signBuffer = await this.keychain.signBuffer({
+        username: signer.username,
+        message: signer.username,
+        method: signer.keyType,
+      } as SignBuffer);
+      if(signBuffer.success){
+        const url = `http://localhost:8080/signature-request/all`;
+        const headers = {
+          'publicKey': signBuffer.publicKey
+            ? signBuffer.publicKey.toString()
+            : '',
+          'message': JSON.stringify(signBuffer.result).replace(/"/g, ''),
+          'username': signBuffer.data.username,
+        };
+      axios.get(url, {
+        params:{publicKey: signBuffer.publicKey},
+        headers: headers,
+      })
+        .then((response) => {
+          // Handle the response here
+          console.log('Response:', response.data);
+        })
+        .catch((error) => {
+          // Handle any errors here
+          console.error('Error:', error);
+        });
+      }
+  }
+
   /**
    * @description
    * This function is called to connect to an account before making a multi-signature transaction.
@@ -142,13 +176,13 @@ export class HiveMultisigSDK {
   ): Promise<SignerConnectResponse> => {
     return new Promise(async (resolve, reject) => {
       try {
-        console.log(signer);
+        
         const signBuffer = await this.keychain.signBuffer({
           username: signer.username,
           message: signer.username,
           method: signer.keyType,
         } as SignBuffer);
-        console.log(signBuffer);
+        
         if (signBuffer.success) {
           const signerConnectParams: SignerConnectMessage = {
             publicKey: signBuffer.publicKey
@@ -157,7 +191,7 @@ export class HiveMultisigSDK {
             message: JSON.stringify(signBuffer.result).replace(/"/g, ''),
             username: signBuffer.data.username,
           };
-          console.log(signerConnectParams);
+         
           this.socket.emit(
             SocketMessageCommand.SIGNER_CONNECT,
             [signerConnectParams],
@@ -341,7 +375,7 @@ export class HiveMultisigSDK {
       try {
 
         const signature = await this.keychain.signTx({
-          username: data.initiator.toString(),
+          username: data.initiator.username.toString(),
           tx: data.transaction,
           method: data.method,
         });
@@ -457,14 +491,14 @@ export class HiveMultisigSDK {
                     message: signer.encryptedTransaction,
                     method: signRequest.keyType,
                   });
-
                   if (decodedMsg.success) {
                     const jsonString = `${decodedMsg.result}`;
                     const decodedTx: SignedTransaction = JSON.parse(
                       jsonString.replace('#', ''),
                     );
                     const validAuth =
-                      await HiveMultisigSDK.validateUserAuthorityOverTransaction(
+                      await HiveMultisigSDK.validateInitiatorOverBroadcaster(
+                        signRequest.initiator,
                         signRequest.keyType,
                         decodedTx,
                       );
@@ -477,7 +511,11 @@ export class HiveMultisigSDK {
                         username: data.username,
                       };
                       transactions.push(tx);
+                    }else{
+                      reject("Invalid initiator.")
                     }
+                  }else{
+                    reject('Decoding failed.');
                   }
                 } catch (error: any) {
                   reject(
@@ -491,7 +529,7 @@ export class HiveMultisigSDK {
             }
         }
         if(transactions.length===0){
-          resolve(undefined);
+          reject("No decoded transactions");
         }else{
           resolve(transactions);
         }

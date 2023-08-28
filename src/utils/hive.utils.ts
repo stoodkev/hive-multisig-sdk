@@ -155,6 +155,7 @@ export const HiveUtils = {
   getClient,
   getAccount,
   getPublicKey,
+  getPublicKeys,
   getPotentialSigners,
   broadcastTx,
   getAccountAuthorities,
