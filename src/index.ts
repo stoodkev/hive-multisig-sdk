@@ -95,6 +95,7 @@ export class HiveMultisigSDK {
     this.keychain = new KeychainSDK(this.window);
     if (!options) {
       this.options = {
+        apiAddress:'http://localhost:5000',
         socketAddress: 'http://localhost:5001',
         clientAddress: 'https://api.deathwing.me',
       };
@@ -125,17 +126,17 @@ export class HiveMultisigSDK {
         method: signer.keyType,
       } as SignBuffer);
       if(signBuffer.success){
-        const url = `http://localhost:8080/signature-request/all`;
+        const url = `${this.options?.apiAddress}/signature-request/all`;
         const headers = {
           'publicKey': signBuffer.publicKey
             ? signBuffer.publicKey.toString()
             : '',
           'message': JSON.stringify(signBuffer.result).replace(/"/g, ''),
-          'username': signBuffer.data.username,
         };
       axios.get(url, {
         params:{publicKey: signBuffer.publicKey},
         headers: headers,
+        withCredentials: false,
       })
         .then((response) => {
           // Handle the response here

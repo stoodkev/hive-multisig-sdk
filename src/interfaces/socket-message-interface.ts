@@ -18,6 +18,7 @@ export interface MultisigOptions {
   keychainOptions?: KeychainOptions;
   socketAddress: string;
   clientAddress: string;
+  apiAddress:string;
 }
 export interface SocketMessage {
   command: string;
