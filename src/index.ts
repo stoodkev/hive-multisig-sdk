@@ -352,11 +352,9 @@ export class HiveMultisigSDK {
           return;
         }
         const signedTransaction = signature.result;
-        const isValidInitiator = await HiveMultisigSDK.validateInitiatorOverBroadcaster(data.initiator.username,data.method,signedTransaction);
         const broadcaster = HiveMultisigSDK.getUsernameFromTransaction(data.transaction);
-        if(isValidInitiator&&broadcaster){
+        if(broadcaster){
           const threshold = await HiveUtils.getThreshold(broadcaster.toString(),data.method);
-          const initiatorWeight = await HiveUtils.getAuthorityWeightOverUser(data.initiator.username, broadcaster.toString(),data.method);
           let receivers: [string, number][] =
             await HiveUtils.getEncodedTxReceivers(broadcaster.toString(), data.method);
           let signerList: RequestSignatureSigner[] = [];
@@ -396,7 +394,7 @@ export class HiveMultisigSDK {
                   username: data.initiator.username.toString(),
                   publicKey: data.initiator.publicKey,
                   signature: signedTransaction.signatures[0],
-                  weight: initiatorWeight as number,
+                  weight: data.initiator.weight as number,
                 },
               };
 
@@ -406,9 +404,6 @@ export class HiveMultisigSDK {
               return;
             }
         }
-        }
-        if(!isValidInitiator){
-          reject(`Initiator:${data.initiator} does not have authority over broadcaster ${broadcaster?.toString()}`);
         }
         if(!broadcaster){
           reject(`Failed to get broadcaster from transaction`);

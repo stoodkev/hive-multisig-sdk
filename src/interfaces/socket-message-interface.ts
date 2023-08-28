@@ -115,7 +115,6 @@ export interface IEncodeTransaction {
   initiator: {
     username:string,
     publicKey: string;
-    weight: number|string
   }
 }
 
