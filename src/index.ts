@@ -117,36 +117,37 @@ export class HiveMultisigSDK {
     return HiveMultisigSDK.instance;
   }
 
-  getTransactions = async (
-    signer: SignerConnect,
-    )=>{
-      const signBuffer = await this.keychain.signBuffer({
-        username: signer.username,
-        message: signer.username,
-        method: signer.keyType,
-      } as SignBuffer);
-      if(signBuffer.success){
-        const url = `${this.options?.apiAddress}/signature-request/all`;
-        const headers = {
-          'publicKey': signBuffer.publicKey
-            ? signBuffer.publicKey.toString()
-            : '',
-          'message': JSON.stringify(signBuffer.result).replace(/"/g, ''),
-        };
-      axios.get(url, {
-        params:{publicKey: signBuffer.publicKey},
-        headers: headers,
-        withCredentials: false,
+  getSignatureRequests = async (
+    data: SignerConnectMessage,
+    ) : Promise<SignatureRequest> =>{
+      return new Promise<SignatureRequest> (async (resolve,reject)=>{
+      
+        if(data){
+          const url = `${this.options?.apiAddress}/signature-request/all`;
+          const headers = {
+            'publicKey': data.publicKey
+              ? data.publicKey.toString()
+              : '',
+            'message': JSON.stringify(data.message).replace(/"/g, ''),
+          };
+              axios.get(url, {
+                params:{publicKey: data.publicKey},
+                headers: headers,
+                withCredentials: false,
+              })
+              .then((response) => {
+                // Handle the response here
+                console.log('Response:', response.data);
+                resolve(response.data)
+              })
+              .catch((error) => {
+                // Handle any errors here
+                console.error('Error:', error);
+                reject(error);
+              });
+        }
       })
-        .then((response) => {
-          // Handle the response here
-          console.log('Response:', response.data);
-        })
-        .catch((error) => {
-          // Handle any errors here
-          console.error('Error:', error);
-        });
-      }
+     
   }
 
   /**
@@ -374,7 +375,8 @@ export class HiveMultisigSDK {
   ): Promise<RequestSignatureMessage> => {
     return new Promise<RequestSignatureMessage>(async (resolve, reject) => {
       try {
-
+        console.log(`Transaction to encode:`)
+        console.log(data)
         const signature = await this.keychain.signTx({
           username: data.initiator.username.toString(),
           tx: data.transaction,
@@ -391,9 +393,11 @@ export class HiveMultisigSDK {
         if(broadcaster){
           const threshold = await HiveUtils.getThreshold(broadcaster.toString(),data.method);
           let potentialSigners: [string, number][] =
-            await HiveUtils.getPotentialSigners(broadcaster.toString(), data.method);
+            await HiveUtils.getPotentialSigners(broadcaster.toString(),data.method);
+          potentialSigners = potentialSigners.filter((signer) => signer[0]!==data.initiator.publicKey);
           let signerList: RequestSignatureSigner[] = [];
-          
+          console.log('potentialSigners:')
+          console.log(potentialSigners)
           if (potentialSigners.length > 0) {
             const encodedTransaction = await this.keychain.encodeWithKeys({
               username: broadcaster.toString(),
@@ -432,7 +436,8 @@ export class HiveMultisigSDK {
                   weight: data.initiator.weight as number,
                 },
               };
-
+              console.log(`RequestSignatureMessage: `)
+              console.log(requestSignMsg)
               resolve(requestSignMsg);
             } else {
               reject(new Error('Failed to encode transaction'));

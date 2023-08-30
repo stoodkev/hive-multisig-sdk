@@ -1,6 +1,7 @@
 import { Authority, Client, PublicKey, SignedTransaction, Transaction } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { Authorities } from '../interfaces/signer';
+import { get } from 'https';
 
 let hiveClient: Client;
 
@@ -130,7 +131,7 @@ const getPublicKey = async(username:string, keyType: KeychainKeyTypes) =>{
   }
 }
 
-const getPotentialSigners = async(username:string, method:KeychainKeyTypes) =>{
+const getPotentialSigners = async(username:string,method:KeychainKeyTypes) =>{
   const authorities = await getAccountAuthorities(username);
   const authority = method === KeychainKeyTypes.active? authorities?.active: authorities?.posting;
   let receivers:[string,number][] =[] 
@@ -150,6 +151,7 @@ const getPotentialSigners = async(username:string, method:KeychainKeyTypes) =>{
 
   return receivers
 }
+
 
 export const HiveUtils = {
   getClient,
