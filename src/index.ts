@@ -119,8 +119,8 @@ export class HiveMultisigSDK {
 
   getSignatureRequests = async (
     data: SignerConnectMessage,
-    ) : Promise<SignatureRequest> =>{
-      return new Promise<SignatureRequest> (async (resolve,reject)=>{
+    ) : Promise<SignatureRequest[]> =>{
+      return new Promise<SignatureRequest[]> (async (resolve,reject)=>{
       
         if(data){
           const url = `${this.options?.apiAddress}/signature-request/all`;
@@ -137,8 +137,8 @@ export class HiveMultisigSDK {
               })
               .then((response) => {
                 // Handle the response here
-                console.log('Response:', response.data);
-                resolve(response.data)
+                // console.log('Response:', response.data);
+                resolve(response.data as SignatureRequest[])
               })
               .catch((error) => {
                 // Handle any errors here

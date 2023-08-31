@@ -12,4 +12,5 @@ export interface SignatureRequest {
   createdAt?:Date;
   updatedAt?:Date;
   signers: Signer[];
+  status?:string;
 }

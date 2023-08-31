@@ -133,4 +133,5 @@ export interface ITransaction{
   username: string;
 }
 
+
 export type SignatureRequestCallback = (message: SignatureRequest) => void;
