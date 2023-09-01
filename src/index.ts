@@ -383,8 +383,8 @@ multisig.signTransaction(data)
     transaction: ITransaction,
   ): Promise<TransactionConfirmation> => {
     return new Promise(async (resolve, reject) => {
-      const broadcastResult = await HiveUtils.broadcastTx(transaction.transaction);
       try {
+        const broadcastResult = await HiveUtils.broadcastTx(transaction.transaction);
         var message: NotifyTxBroadcastedMessage = {
           signatureRequestId: transaction.signatureRequestId,
         };
