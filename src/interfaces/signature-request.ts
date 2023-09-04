@@ -9,5 +9,8 @@ export interface SignatureRequest {
   initiator: string;
   locked: boolean;
   broadcasted?: boolean;
+  createdAt?:Date;
+  updatedAt?:Date;
   signers: Signer[];
+  status?:string;
 }

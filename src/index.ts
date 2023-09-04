@@ -41,6 +41,7 @@ import {
   SetWithdrawVestingRouteOperation,
   SignedTransaction,
   Transaction,
+  TransactionConfirmation,
   TransferFromSavingsOperation,
   TransferOperation,
   TransferToSavingsOperation,
@@ -52,6 +53,7 @@ import {
   WitnessSetPropertiesOperation,
   WitnessUpdateOperation,
 } from '@hiveio/dhive';
+import axios from 'axios';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { KeychainSDK, SignBuffer } from 'keychain-sdk';
 import * as io from 'socket.io-client';
@@ -63,6 +65,7 @@ import {
   ISignatureRequest,
   ITransaction,
   MultisigOptions,
+  NotifyTxBroadcastedMessage,
   RequestSignatureMessage,
   RequestSignatureSigner,
   SignTransactionMessage,
@@ -83,6 +86,7 @@ import { HiveUtils, getPublicKeys } from './utils/hive.utils';
  * @class
  */
 export class HiveMultisigSDK {
+  private static instance: HiveMultisigSDK;
   window: Window;
   options?: MultisigOptions;
   keychain: KeychainSDK;
@@ -92,6 +96,7 @@ export class HiveMultisigSDK {
     this.keychain = new KeychainSDK(this.window);
     if (!options) {
       this.options = {
+        apiAddress:'http://localhost:5000',
         socketAddress: 'http://localhost:5001',
         clientAddress: 'https://api.deathwing.me',
       };
@@ -103,42 +108,83 @@ export class HiveMultisigSDK {
       console.log(`Socket Connected with ID: ${this.socket.id}`);
     });
   }
+  public static getInstance(
+    window: Window,
+    options?: MultisigOptions,
+  ): HiveMultisigSDK {
+    if (!HiveMultisigSDK.instance) {
+      HiveMultisigSDK.instance = new HiveMultisigSDK(window, options);
+    }
+    return HiveMultisigSDK.instance;
+  }
+
+  /**
+   * @description Collects the list of signature requests from the backend.
+   * @param data 
+   * @returns SignatureRequest[]
+   */
+  getSignatureRequests = async (
+    data: SignerConnectMessage,
+    ) : Promise<SignatureRequest[]> =>{
+      return new Promise<SignatureRequest[]> (async (resolve,reject)=>{
+      
+        if(data){
+          const url = `${this.options?.apiAddress}/signature-request/all`;
+          const headers = {
+            'publicKey': data.publicKey
+              ? data.publicKey.toString()
+              : '',
+            'message': JSON.stringify(data.message).replace(/"/g, ''),
+          };
+              axios.get(url, {
+                params:{publicKey: data.publicKey},
+                headers: headers,
+                withCredentials: false,
+              })
+              .then((response) => {
+                resolve(response.data as SignatureRequest[])
+              })
+              .catch((error) => {
+                reject(error);
+              });
+        }
+      })
+     
+  }
 
   /**
    * @description
    * This function is called to connect to an account before making a multi-signature transaction.
-   *
-   * Under the hood, this function will call the window.hive_keychain.requestSignBuffer() using KeychainSDK.
    *
    * @example
    * import {HiveMultisigSDK} from "hive-multisig-sdk";
    * const multisig = new HiveMultisigSDK(window);
    * const username = 'hive.user';
    * try {
-   *       const signerConnectResponse = await multisig.singleSignerConnect(
+   *       const signerConnectResponse = await multisig.signerConnect({
    *           username,
-   *           KeychainKeyTypes.posting,
-   *       );
+   *           KeychainKeyTypes.posting
+   *        });
    *       console.log({ signerConnectResponse });
    *   } catch (error) {
    *       console.log(error);
    *   }
-   * @param to username or key
-   * @param keyType KeychainKeyTypes
-   * @returns signerConnect
+   * @param username  
+   * @param keyType 
+   * @returns SignerConnectResponse
    */
   signerConnect = async (
     signer: SignerConnect,
   ): Promise<SignerConnectResponse> => {
     return new Promise(async (resolve, reject) => {
       try {
-        console.log(signer);
+        
         const signBuffer = await this.keychain.signBuffer({
           username: signer.username,
           message: signer.username,
           method: signer.keyType,
         } as SignBuffer);
-        console.log(signBuffer);
+        
         if (signBuffer.success) {
           const signerConnectParams: SignerConnectMessage = {
             publicKey: signBuffer.publicKey
@@ -147,7 +193,7 @@ export class HiveMultisigSDK {
             message: JSON.stringify(signBuffer.result).replace(/"/g, ''),
             username: signBuffer.data.username,
           };
-          console.log(signerConnectParams);
+         
           this.socket.emit(
             SocketMessageCommand.SIGNER_CONNECT,
             [signerConnectParams],
@@ -173,28 +219,24 @@ export class HiveMultisigSDK {
 
   /**
    * @description
-   * A function tha returns the account authorities that are required to sign for the multisig transaction
+   * A function tha returns the list of potential signers' public key and weight
    *
    * @param username
    * @param keyType the transaction key type or method
-   * @returns Authority - containing the list of accounts and keys as well as the corresponding weights and weight threshold
+   * @returns [string,number][] List of publicKey with corresponding weight 
    */
   getSigners = async (
     username: string,
     keyType: KeychainKeyTypes,
-  ): Promise<Authority> => {
+  ): Promise<[string,number][]> => {
     return new Promise(async (resolve, reject) => {
       try {
-        const account = await HiveUtils.getAccount(username);
-        if (account.length === 0) {
+        let signers:[string,number][] = [];
+        signers = await HiveUtils.getPotentialSigners(username,keyType);
+        if (signers.length === 0) {
           reject(`${username} not found`);
         }
-        switch (keyType) {
-          case KeychainKeyTypes.active:
-            resolve(account[0].active);
-          case KeychainKeyTypes.posting:
-            resolve(account[0].posting);
-        }
+        resolve(signers)
       } catch (error: any) {
         reject(new Error('error occured during getSigners: ' + error.message));
       }
@@ -203,10 +245,10 @@ export class HiveMultisigSDK {
 
   /**
    * @description
+   * A function that sends a signature request to potential signers
    *
    *
-   *
-   * @param message
+   * @param message - contains the encrypted transaction
    * @return
    */
   sendSignatureRequest = async (
@@ -230,10 +272,35 @@ export class HiveMultisigSDK {
   };
 
   /**
-   * @description
-   *
-   * @param message .
-   * @returns.
+   * @description Sends the signed transaction to the backend.
+   * @param message 
+   * @returns The list of signatures when the transaction is ready for broadcasting otherwise none.
+   * @example
+   * const multisig = new HiveMultisigSDK(window);
+
+const data: ISignTransaction = {
+      decodedTransaction: decodedTransaction.transaction,
+      signerId: decodedTransaction.signer.id,
+      signatureRequestId: decodedTransaction.signatureRequestId,
+      username: user.data.username,
+      method: decodedTransaction.method,
+    };
+
+multisig.signTransaction(data)
+  .then(async (signatures) => {
+    if (signatures?.length > 0) {
+      let txToBroadcast = structuredClone(decodedTransaction);
+      txToBroadcast.transaction.signatures = [...signatures];
+      let broadcastResult = await multisig.broadcastTransaction(
+        txToBroadcast,
+      );
+      console.log(broadcastResult);
+    }
+  })
+  .catch((reason: any) => {
+    console.log(`Sign Transaction Rejected ${reason}`);
+  });
+   
    */
   signTransaction = async (data: ISignTransaction): Promise<string[]> => {
     return new Promise(async (resolve, reject) => {
@@ -281,26 +348,51 @@ export class HiveMultisigSDK {
 
   /**
    * @description
-   * Notifies the backend about a transaction being broadcasted.
+   * Broadcasts the transaction and notifies the backend about a transaction being broadcasted.
    *
    * @param message The ITransaction containing the transaction with the appended signature of broadcasting user.
-   * @returns A Promise that resolves with a string message indicating successful notification.
+   * @returns TransactionConfirmation
+   * 
+   * * @example
+   * const multisig = new HiveMultisigSDK(window);
+
+const data: ISignTransaction = {
+      decodedTransaction: decodedTransaction.transaction,
+      signerId: decodedTransaction.signer.id,
+      signatureRequestId: decodedTransaction.signatureRequestId,
+      username: user.data.username,
+      method: decodedTransaction.method,
+    };
+
+multisig.signTransaction(data)
+  .then(async (signatures) => {
+    if (signatures?.length > 0) {
+      let txToBroadcast = structuredClone(decodedTransaction);
+      txToBroadcast.transaction.signatures = [...signatures];
+      let broadcastResult = await multisig.broadcastTransaction(
+        txToBroadcast,
+      );
+      console.log(broadcastResult);
+    }
+  })
+  .catch((reason: any) => {
+    console.log(`Sign Transaction Rejected ${reason}`);
+  });
    */
   broadcastTransaction = async (
     transaction: ITransaction,
-  ): Promise<boolean> => {
+  ): Promise<TransactionConfirmation> => {
     return new Promise(async (resolve, reject) => {
-      //TODO: uncomment and test broadcast
-      //const broadcastResult = await HiveUtils.broadcastTx(transaction.transaction);
-
       try {
+        const broadcastResult = await HiveUtils.broadcastTx(transaction.transaction);
+        var message: NotifyTxBroadcastedMessage = {
+          signatureRequestId: transaction.signatureRequestId,
+        };
         this.socket.emit(
           SocketMessageCommand.NOTIFY_TRANSACTION_BROADCASTED,
-          transaction.signatureRequestId,
+          message,
           () => {
-            //TODO: uncomment and test broadcast
-            // resolve(broadcastResult);
-            resolve(true);
+            resolve(broadcastResult);
           },
         );
       } catch (error: any) {
@@ -316,11 +408,22 @@ export class HiveMultisigSDK {
 
   /**
    * @description
-   * Encodes the transaction data using the keychain.
-   *
+   * Encodes the transaction data using the keychain. 
    * @param data The object containing transaction encoding details.
    * @returns A Promise that resolves with the encoded transaction as a string.
-   */
+   *
+   * @example 
+   * const txEncode: IEncodeTransaction = {
+          transaction: transaction,
+          method: transactionState.method,
+          expirationDate: new Date(
+            getISOStringDate(transactionState.expiration),
+          ),
+          initiator: { ...transactionState.initiator },
+        };
+        const encodedTxObj = await multisig.encodeTransaction(txEncode);
+        console.log(encodedTxObj);
+    */
   encodeTransaction = (
     data: IEncodeTransaction,
   ): Promise<RequestSignatureMessage> => {
@@ -337,57 +440,61 @@ export class HiveMultisigSDK {
           );
           return;
         }
-
         const signedTransaction = signature.result;
-        let receivers: [string, number][] =
-          await HiveUtils.getEncodedTxReceivers(data.authority, data.method);
-        let signerList: RequestSignatureSigner[] = [];
+        const broadcaster = HiveMultisigSDK.getUsernameFromTransaction(data.transaction);
+        if(broadcaster){
+          const threshold = await HiveUtils.getThreshold(broadcaster.toString(),data.method);
+          let potentialSigners: [string, number][] =
+            await HiveUtils.getPotentialSigners(broadcaster.toString(),data.method);
+          potentialSigners = potentialSigners.filter((signer) => signer[0]!==data.initiator.publicKey);
+          let signerList: RequestSignatureSigner[] = [];
+          if (potentialSigners.length > 0) {
+            const encodedTransaction = await this.keychain.encodeWithKeys({
+              username: broadcaster.toString(),
+              publicKeys: potentialSigners.map((k) => {
+                return k[0];
+              }),
+              message: `#${JSON.stringify(signedTransaction)}`,
+              method: data.method,
+            });
 
-        if (receivers.length > 0) {
-          const encodedTransaction = await this.keychain.encodeWithKeys({
-            username: data.initiator.username.toString(),
-            publicKeys: receivers.map((k) => {
-              return k[0];
-            }),
-            message: `#${JSON.stringify(signedTransaction)}`,
-            method: data.method,
-          });
-
-          if (encodedTransaction.success && encodedTransaction.result) {
-            const resultString = JSON.stringify(encodedTransaction.result);
-            const encodedTx = JSON.parse(resultString);
-            for (let i = 0; i < receivers.length; i++) {
-              var result = encodedTx[receivers[i][0]];
-              var signer: RequestSignatureSigner = {
-                encryptedTransaction: result,
-                publicKey: receivers[i][0],
-                weight: receivers[i][1].toString(),
+            if (encodedTransaction.success && encodedTransaction.result) {
+              const resultString = JSON.stringify(encodedTransaction.result);
+              const encodedTx = JSON.parse(resultString);
+              for (let i = 0; i < potentialSigners.length; i++) {
+                var result = encodedTx[potentialSigners[i][0]];
+                var signer: RequestSignatureSigner = {
+                  encryptedTransaction: result,
+                  publicKey: potentialSigners[i][0],
+                  weight: potentialSigners[i][1].toString(),
+                };
+                signerList.push(signer);
+              }
+              const signatureRequest: ISignatureRequest = {
+                expirationDate: data.expirationDate,
+                threshold: threshold as number,
+                keyType: data.method,
+                signers: signerList,
               };
-              signerList.push(signer);
+
+              const requestSignMsg: RequestSignatureMessage = {
+                signatureRequest,
+                initialSigner: {
+                  username: data.initiator.username.toString(),
+                  publicKey: data.initiator.publicKey,
+                  signature: signedTransaction.signatures[0],
+                  weight: data.initiator.weight as number,
+                },
+              };
+              resolve(requestSignMsg);
+            } else {
+              reject(new Error('Failed to encode transaction'));
+              return;
             }
-
-            const signatureRequest: ISignatureRequest = {
-              expirationDate: data.expirationDate,
-              threshold: data.authority.weight_threshold,
-              keyType: data.method,
-              signers: signerList,
-            };
-
-            const requestSignMsg: RequestSignatureMessage = {
-              signatureRequest,
-              initialSigner: {
-                username: data.initiator.username,
-                publicKey: data.initiator.publicKey,
-                signature: signedTransaction.signatures[0],
-                weight: data.initiator.weight as number,
-              },
-            };
-
-            resolve(requestSignMsg);
-          } else {
-            reject(new Error('Failed to encode transaction'));
-            return;
-          }
+        }
+        }
+        if(!broadcaster){
+          reject(`Failed to get broadcaster from transaction`);
         }
       } catch (error: any) {
         reject(
@@ -401,15 +508,22 @@ export class HiveMultisigSDK {
 
   /**
    * @description
-   * Decodes the encrypted transaction for the signature request.
+   * Decodes the encrypted transactions for the signature request.
    *
    * @param signatureRequest
    * @param username
    * @returns A Promise that resolves with the decoded transaction as a Transaction object.
+   *
+   * @example
+   * const decodedTxs = await multisig.decodeTransaction({
+        signatureRequest: [request],
+        username: user.data.username,
+      });
+    console.log(decodedTxs)
    */
   decodeTransaction = async (
     data: IDecodeTransaction,
-  ): Promise<ITransaction[]> => {
+  ): Promise<ITransaction[]|undefined> => {
     return new Promise(async (resolve, reject) => {
       if (data.signatureRequest.length <= 0) {
         reject(
@@ -422,42 +536,47 @@ export class HiveMultisigSDK {
         let transactions: ITransaction[] = [];
         for (var k = 0; k < data.signatureRequest.length; k++) {
           const signRequest = data.signatureRequest[k];
-          const publicKeys = await getPublicKeys(
+          const signerPublicKeys = await getPublicKeys(
             data.username,
             signRequest.keyType,
           );
-          if (!publicKeys) {
-            reject(
-              new Error(`No publicKey can be found for ${data.username}}`),
-            );
+          if (!signerPublicKeys) {
+            reject(new Error(`No publicKey can be found for ${data.username}`));
           }
-          if (signRequest.initiator !== data.username) {
-            //dont decode for initiator
             for (var i = 0; i < signRequest.signers.length; i++) {
-              //loop through signers
               const signer = signRequest.signers[i];
-              if (publicKeys?.includes(signer.publicKey)) {
-                // check if the signer is one of my publickey
+              if (signerPublicKeys?.includes(signer.publicKey)) {
                 try {
                   const decodedMsg = await this.keychain.decode({
                     username: data.username,
                     message: signer.encryptedTransaction,
                     method: signRequest.keyType,
                   });
-
                   if (decodedMsg.success) {
                     const jsonString = `${decodedMsg.result}`;
                     const decodedTx: SignedTransaction = JSON.parse(
                       jsonString.replace('#', ''),
                     );
-                    const tx: ITransaction = {
-                      signer: signer,
-                      signatureRequestId: signRequest.id,
-                      transaction: decodedTx,
-                      method: signRequest.keyType,
-                      username: data.username,
-                    };
-                    transactions.push(tx);
+                    const validAuth =
+                      await HiveMultisigSDK.validateInitiatorOverBroadcaster(
+                        signRequest.initiator,
+                        signRequest.keyType,
+                        decodedTx,
+                      );
+                    if (validAuth) {
+                      const tx: ITransaction = {
+                        signer: signer,
+                        signatureRequestId: signRequest.id,
+                        transaction: decodedTx,
+                        method: signRequest.keyType,
+                        username: data.username,
+                      };
+                      transactions.push(tx);
+                    }else{
+                      reject("Invalid initiator.")
+                    }
+                  }else{
+                    reject('Decoding failed.');
                   }
                 } catch (error: any) {
                   reject(
@@ -469,9 +588,12 @@ export class HiveMultisigSDK {
                 }
               }
             }
-          }
         }
-        resolve(transactions);
+        if(transactions.length===0){
+          reject("No decoded transactions");
+        }else{
+          resolve(transactions);
+        }
       } catch (error: any) {
         reject(new Error(`Error while decoding transactions: ${error}`));
       }
@@ -483,7 +605,12 @@ export class HiveMultisigSDK {
    * Subscribes to signature requests and invokes the provided callback function when a signature request is received.
    *
    * @param callback The callback function to be invoked with the signature request.
-   * @returns A Promise that resolves with a string message indicating successful subscription.
+   * @returns true indicating successful subscription otherwise false.
+   *
+   * @example
+   *  await multisig.subscribeToSignRequests(
+      (message:SignatureRequest)=>{ console.log(message)}),
+    );
    */
   subscribeToSignRequests = (
     callback: SignatureRequestCallback,
@@ -513,7 +640,12 @@ export class HiveMultisigSDK {
    * Subscribes to broadcasted transactions and invokes the provided callback function when a transaction has been broadcasted.
    *
    * @param callback The callback function to be invoked with the signature request.
-   * @returns A Promise that resolves with a string message indicating successful subscription.
+   * @returns true indicating successful subscription otherwise false.
+   *
+   * @example
+   * await multisig.subscribeToBroadcastedTransactions(
+      (message:SignatureRequest)=>{ console.log(message)}),
+    );
    */
   subscribeToBroadcastedTransactions = (
     callback: SignatureRequestCallback,
@@ -537,6 +669,81 @@ export class HiveMultisigSDK {
       }
     });
   };
+
+/**
+ * @description Validate if the initiator has authority over the account in the transaction
+ * @param initiator 
+ * @param keyType 
+ * @param transaction 
+ * @returns true when the initiator is valid otherwise false;
+ */
+  static validateInitiatorOverBroadcaster = async (initiator:string,keyType: KeychainKeyTypes,
+    transaction: SignedTransaction,)=>{
+      const txUsername = HiveMultisigSDK.getUsernameFromTransaction(transaction);
+      if (!txUsername) {
+        return undefined;
+      }
+      const initiatorPublicKeys = await HiveUtils.getPublicKeys(initiator,keyType);
+      const userAuthorities = await HiveUtils.getPotentialSigners(
+        txUsername.toString(),
+        keyType,
+      );
+      if(!initiatorPublicKeys){
+        return undefined;
+      }
+      if (!userAuthorities) {
+        return undefined;
+      }
+      for(const key of initiatorPublicKeys){
+        for (const [u, w] of userAuthorities) {
+          if (key === u && w > 0) {
+            return true;
+          }
+        }
+      }
+     
+      return false;
+  }
+
+  /**
+   * @description
+   * Returns the list of authorities in a form of [string,number] tuple of username/key and weight with respect to key type.
+   *
+   * @param username the username owner account
+   * @param keyType the keytype of authorities
+   * @returns
+   */
+  static getAuthorities = async (
+    username: string,
+    keyType: KeychainKeyTypes,
+  ) => {
+    const authorities = await HiveUtils.getAccount(username);
+    let auths: [string, number][] = [];
+    if (authorities) {
+      switch (keyType) {
+        case KeychainKeyTypes.active:
+          for (const [acc, weight] of authorities[0].active.account_auths) {
+            auths.push([acc, weight]);
+          }
+          for (const [key, weight] of authorities[0].active.key_auths) {
+            auths.push([key.toString(), weight]);
+          }
+          return auths;
+        case KeychainKeyTypes.posting:
+          for (const [acc, weight] of authorities[0].posting.account_auths) {
+            auths.push([acc, weight]);
+          }
+          for (const [key, weight] of authorities[0].posting.key_auths) {
+            auths.push([key.toString(), weight]);
+          }
+          return auths;
+        default:
+          return undefined;
+      }
+    }
+    return undefined;
+  };
+
   /**
    * @description
    * Get the username that will request the broadcast of a given tx

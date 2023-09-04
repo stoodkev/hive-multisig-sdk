@@ -1,8 +1,8 @@
-import { KeychainKeyTypes } from 'hive-keychain-commons';
-import { SignatureRequest } from './signature-request';
-import { KeychainOptions } from 'keychain-sdk';
-import { Signature, Transaction,SignedTransaction } from '@hiveio/dhive';
 import * as Hive from '@hiveio/dhive';
+import { SignedTransaction, Transaction } from '@hiveio/dhive';
+import { KeychainKeyTypes } from 'hive-keychain-commons';
+import { KeychainOptions } from 'keychain-sdk';
+import { SignatureRequest } from './signature-request';
 import { Signer } from './signer';
 
 export enum SocketMessageCommand {
@@ -14,15 +14,19 @@ export enum SocketMessageCommand {
   NOTIFY_TRANSACTION_BROADCASTED = 'notify_transaction_broadcasted',
   TRANSACTION_BROADCASTED_NOTIFICATION = 'transaction_broadcasted_notification',
 }
-
 export interface MultisigOptions {
   keychainOptions?: KeychainOptions;
   socketAddress: string;
   clientAddress: string;
+  apiAddress:string;
 }
 export interface SocketMessage {
   command: string;
   payload: SocketMessagePayload;
+}
+
+export interface NotifyTxBroadcastedMessage extends SocketMessagePayload {
+  signatureRequestId: number;
 }
 
 export interface SocketMessagePayload {}
@@ -111,10 +115,9 @@ export interface IEncodeTransaction {
   expirationDate: Date;
   initiator: {
     username:string,
-    publicKey:string,
-    weight:string|number,
+    publicKey: string,
+    weight: number
   }
-  authority: Hive.Authority;
 }
 
 export interface IDecodeTransaction {
@@ -129,5 +132,6 @@ export interface ITransaction{
   method: KeychainKeyTypes;
   username: string;
 }
+
 
 export type SignatureRequestCallback = (message: SignatureRequest) => void;
