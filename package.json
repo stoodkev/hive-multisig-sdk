@@ -1,7 +1,7 @@
 {
   "name": "hive-multisig-sdk",
-  "version": "1.0.0",
-  "description": "sdk for hive multisig",
+  "version": "0.0.1",
+  "description": "Hive Multisig SDK",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
@@ -71,7 +71,7 @@
     "hash-base": "^3.1.0",
     "hash.js": "^1.1.7",
     "highlight.js": "^10.7.3",
-    "hive-keychain-commons": "^1.1.0",
+    "hive-keychain-commons": "^1.2.2",
     "hmac-drbg": "^1.0.1",
     "https": "^1.0.0",
     "ieee754": "^1.2.1",
@@ -81,7 +81,7 @@
     "is-fullwidth-code-point": "^3.0.0",
     "is-stream": "^2.0.1",
     "jsbi": "^3.2.5",
-    "keychain-sdk": "^0.4.0",
+    "keychain-sdk": "^0.5.0",
     "kuler": "^2.0.0",
     "logform": "^2.5.1",
     "long": "^3.2.0",
