@@ -70,7 +70,6 @@ import {
   RequestSignatureSigner,
   SignTransactionMessage,
   SignatureRequestCallback,
-  SignerConnect,
   SignerConnectMessage,
   SignerConnectResponse,
   SocketMessageCommand,
@@ -163,7 +162,7 @@ export class HiveMultisigSDK {
    * try {
    *       const signerConnectResponse = await multisig.signerConnect({
    *           username,
-   *           KeychainKeyTypes.posting
+   *           keyType:KeychainKeyTypes.posting
    *        });
    *       console.log({ signerConnectResponse });
    *   } catch (error) {
@@ -174,32 +173,34 @@ export class HiveMultisigSDK {
    * @returns SignerConnectResponse
    */
   signerConnect = async (
-    signer: SignerConnect,
+    data: SignerConnectMessage,
   ): Promise<SignerConnectResponse> => {
     return new Promise(async (resolve, reject) => {
       try {
-        
-        const signBuffer = await this.keychain.signBuffer({
-          username: signer.username,
-          message: signer.username,
-          method: signer.keyType,
-        } as SignBuffer);
-        
-        if (signBuffer.success) {
-          const signerConnectParams: SignerConnectMessage = {
-            publicKey: signBuffer.publicKey
-              ? signBuffer.publicKey.toString()
-              : '',
-            message: JSON.stringify(signBuffer.result).replace(/"/g, ''),
-            username: signBuffer.data.username,
-          };
-         
+        if(!data.message){
+          const signBuffer = await this.keychain.signBuffer({
+            username: data.username,
+            message: data.username,
+            method: data.keyType,
+          } as SignBuffer);
+          if (signBuffer.success) {
+            data = { ...data,
+              message: JSON.stringify(signBuffer.result).replace(/"/g, ''),
+              publicKey: signBuffer.publicKey? signBuffer.publicKey.toString():""
+            }
+          }
+        }
+        if(data.message){
           this.socket.emit(
             SocketMessageCommand.SIGNER_CONNECT,
-            [signerConnectParams],
+            [data],
             (signerConnectResponse: SignerConnectResponse) => {
               if (signerConnectResponse.errors) {
                 reject(signerConnectResponse.errors);
+              }
+              signerConnectResponse = {...signerConnectResponse,
+                message:data.message,
+                publicKey:data.publicKey
               }
               resolve(signerConnectResponse);
             },
@@ -214,7 +215,9 @@ export class HiveMultisigSDK {
           'Error occurred during singleSignerConnect: ' + error.message;
         reject(new Error(errorMessage));
       }
-    });
+
+        }
+    );
   };
 
   /**
@@ -446,6 +449,8 @@ multisig.signTransaction(data)
           const threshold = await HiveUtils.getThreshold(broadcaster.toString(),data.method);
           let potentialSigners: [string, number][] =
             await HiveUtils.getPotentialSigners(broadcaster.toString(),data.method);
+            console.log(`potentialSigners`);
+            console.log(potentialSigners);
           potentialSigners = potentialSigners.filter((signer) => signer[0]!==data.initiator.publicKey);
           let signerList: RequestSignatureSigner[] = [];
           if (potentialSigners.length > 0) {

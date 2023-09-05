@@ -31,19 +31,20 @@ export interface NotifyTxBroadcastedMessage extends SocketMessagePayload {
 
 export interface SocketMessagePayload {}
 
-export interface SignerConnect {
+
+export interface SignerConnectMessage extends SocketMessagePayload {
+  publicKey?: string;
+  message?: string;
   username: string;
   keyType: KeychainKeyTypes;
 }
-export interface SignerConnectMessage extends SocketMessagePayload {
-  publicKey: string;
-  message: string;
-  username: string;
-}
+
 
 export interface SignerConnectResponse {
   errors?: SignerConnectError;
   result?: SignerConnectResult;
+  message?: string;
+  publicKey?: string;
 }
 
 export interface SignerConnectResult {
