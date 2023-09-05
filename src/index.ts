@@ -387,6 +387,7 @@ multisig.signTransaction(data)
           },
         );
       } catch (error: any) {
+        console.log(error);
         reject(
           new Error(
             'Error occured during notifyTransactionBroadcased: ' +
@@ -455,7 +456,7 @@ multisig.signTransaction(data)
               publicKeys: potentialSigners.map((k) => {
                 return k[0];
               }),
-              message: `#${JSON.stringify(signedTransaction)}`,
+              message: `#${JSON.stringify(data.transaction)}`,
               method: data.method,
             });
 
