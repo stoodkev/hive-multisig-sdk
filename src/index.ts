@@ -207,12 +207,12 @@ export class HiveMultisigSDK {
           );
         } else {
           reject(
-            new Error('Error while signing buffer during singleSignerConnect'),
+            new Error('Error while signing buffer during signerConnect'),
           );
         }
       } catch (error: any) {
         const errorMessage =
-          'Error occurred during singleSignerConnect: ' + error.message;
+          'Error occurred during signerConnect: ' + error.message;
         reject(new Error(errorMessage));
       }
 
