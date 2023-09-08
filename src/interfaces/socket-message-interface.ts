@@ -68,7 +68,7 @@ export interface SignerConnectError {
 }
 
 export interface ISignatureRequest {
-  expirationDate: Date;
+  expirationDate: Date|string;
   threshold: number;
   keyType: KeychainKeyTypes;
   signers: RequestSignatureSigner[];
@@ -113,7 +113,7 @@ export interface ISignTransaction {
 export interface IEncodeTransaction {
   transaction: Transaction;
   method: KeychainKeyTypes;
-  expirationDate: Date;
+  expirationDate: Date|string;
   initiator: {
     username:string,
     publicKey: string,

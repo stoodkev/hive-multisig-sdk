@@ -215,7 +215,6 @@ export class HiveMultisigSDK {
           'Error occurred during signerConnect: ' + error.message;
         reject(new Error(errorMessage));
       }
-
         }
     );
   };
@@ -449,8 +448,6 @@ multisig.signTransaction(data)
           const threshold = await HiveUtils.getThreshold(broadcaster.toString(),data.method);
           let potentialSigners: [string, number][] =
             await HiveUtils.getPotentialSigners(broadcaster.toString(),data.method);
-            console.log(`potentialSigners`);
-            console.log(potentialSigners);
           potentialSigners = potentialSigners.filter((signer) => signer[0]!==data.initiator.publicKey);
           let signerList: RequestSignatureSigner[] = [];
           if (potentialSigners.length > 0) {
@@ -693,6 +690,7 @@ multisig.signTransaction(data)
         txUsername.toString(),
         keyType,
       );
+     
       if(!initiatorPublicKeys){
         return undefined;
       }
