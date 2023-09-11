@@ -1,6 +1,6 @@
 {
   "name": "hive-multisig-sdk",
-  "version": "0.0.3.1",
+  "version": "0.0.4",
   "description": "sdk for hive multisig",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
