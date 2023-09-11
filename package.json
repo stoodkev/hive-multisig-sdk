@@ -1,6 +1,6 @@
 {
   "name": "hive-multisig-sdk",
-  "version": "0.0.3",
+  "version": "0.0.3.1",
   "description": "sdk for hive multisig",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -81,7 +81,7 @@
     "is-fullwidth-code-point": "^3.0.0",
     "is-stream": "^2.0.1",
     "jsbi": "^3.2.5",
-    "keychain-sdk": "^0.4.0",
+    "keychain-sdk": "^0.5.0",
     "kuler": "^2.0.0",
     "logform": "^2.5.1",
     "long": "^3.2.0",
