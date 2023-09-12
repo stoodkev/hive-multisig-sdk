@@ -10,6 +10,7 @@ const getClient = () => {
     hiveClient = new Client([
       'https://api.hive.blog',
       'https://api.hivekings.com',
+      'https://api.deathwing.me',
       'https://anyx.io',
       'https://api.openhive.network',
     ]);

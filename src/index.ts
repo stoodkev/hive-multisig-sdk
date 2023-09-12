@@ -90,6 +90,7 @@ export class HiveMultisigSDK {
   options?: MultisigOptions;
   keychain: KeychainSDK;
   socket: io.Socket;
+  
   constructor(window: Window, options?: MultisigOptions) {
     this.window = window;
     this.keychain = new KeychainSDK(this.window);
@@ -456,7 +457,7 @@ multisig.signTransaction(data)
               publicKeys: potentialSigners.map((k) => {
                 return k[0];
               }),
-              message: `#${JSON.stringify(signedTransaction)}`,
+              message: `#${JSON.stringify(data.transaction)}`,
               method: data.method,
             });
 
