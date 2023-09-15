@@ -1,7 +1,5 @@
-import * as Hive from '@hiveio/dhive';
 import { SignedTransaction, Transaction } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
-import { KeychainOptions } from 'keychain-sdk';
 import { SignatureRequest } from './signature-request';
 import { Signer } from './signer';
 
@@ -15,10 +13,9 @@ export enum SocketMessageCommand {
   TRANSACTION_BROADCASTED_NOTIFICATION = 'transaction_broadcasted_notification',
 }
 export interface MultisigOptions {
-  keychainOptions?: KeychainOptions;
   socketAddress: string;
   clientAddress: string;
-  apiAddress:string;
+  apiAddress: string;
 }
 export interface SocketMessage {
   command: string;
@@ -31,14 +28,12 @@ export interface NotifyTxBroadcastedMessage extends SocketMessagePayload {
 
 export interface SocketMessagePayload {}
 
-
 export interface SignerConnectMessage extends SocketMessagePayload {
   publicKey?: string;
   message?: string;
   username: string;
   keyType: KeychainKeyTypes;
 }
-
 
 export interface SignerConnectResponse {
   errors?: SignerConnectError;
@@ -68,7 +63,7 @@ export interface SignerConnectError {
 }
 
 export interface ISignatureRequest {
-  expirationDate: Date|string;
+  expirationDate: Date | string;
   threshold: number;
   keyType: KeychainKeyTypes;
   signers: RequestSignatureSigner[];
@@ -113,12 +108,12 @@ export interface ISignTransaction {
 export interface IEncodeTransaction {
   transaction: Transaction;
   method: KeychainKeyTypes;
-  expirationDate: Date|string;
+  expirationDate: Date | string;
   initiator: {
-    username:string,
-    publicKey: string,
-    weight: number
-  }
+    username: string;
+    publicKey: string;
+    weight: number;
+  };
 }
 
 export interface IDecodeTransaction {
@@ -126,13 +121,12 @@ export interface IDecodeTransaction {
   username: string;
 }
 
-export interface ITransaction{
-  signer:Signer,
-  signatureRequestId:number ,
+export interface ITransaction {
+  signer: Signer;
+  signatureRequestId: number;
   transaction: SignedTransaction;
   method: KeychainKeyTypes;
   username: string;
 }
-
 
 export type SignatureRequestCallback = (message: SignatureRequest) => void;

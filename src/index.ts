@@ -83,8 +83,8 @@ import { HiveUtils, getPublicKeys } from './utils/hive.utils';
  * @export
  * @class
  */
-export class HiveMultisigSDK {
-  private static instance: HiveMultisigSDK;
+export class HiveMultisig {
+  private static instance: HiveMultisig;
   window: Window;
   options?: MultisigOptions;
   keychain: KeychainSDK;
@@ -111,11 +111,11 @@ export class HiveMultisigSDK {
   public static getInstance(
     window: Window,
     options?: MultisigOptions,
-  ): HiveMultisigSDK {
-    if (!HiveMultisigSDK.instance) {
-      HiveMultisigSDK.instance = new HiveMultisigSDK(window, options);
+  ): HiveMultisig {
+    if (!HiveMultisig.instance) {
+      HiveMultisig.instance = new HiveMultisig(window, options);
     }
-    return HiveMultisigSDK.instance;
+    return HiveMultisig.instance;
   }
 
   api = {
@@ -520,7 +520,7 @@ multisig.signTransaction(data)
             return;
           }
           const signedTransaction = signature.result;
-          const broadcaster = HiveMultisigSDK.getUsernameFromTransaction(
+          const broadcaster = HiveMultisig.getUsernameFromTransaction(
             data.transaction,
           );
           if (broadcaster) {
@@ -649,7 +649,7 @@ multisig.signTransaction(data)
                       jsonString.replace('#', ''),
                     );
                     const validAuth =
-                      await HiveMultisigSDK.validateInitiatorOverBroadcaster(
+                      await HiveMultisig.validateInitiatorOverBroadcaster(
                         signRequest.initiator,
                         signRequest.keyType,
                         decodedTx,
@@ -704,7 +704,7 @@ multisig.signTransaction(data)
     keyType: KeychainKeyTypes,
     transaction: SignedTransaction,
   ) => {
-    const txUsername = HiveMultisigSDK.getUsernameFromTransaction(transaction);
+    const txUsername = HiveMultisig.getUsernameFromTransaction(transaction);
     if (!txUsername) {
       return undefined;
     }

@@ -1,6 +1,6 @@
 import { Transaction, TransferOperation, VoteOperation } from '@hiveio/dhive';
 import { describe, expect, it } from '@jest/globals';
-import { HiveMultisigSDK } from '.';
+import { HiveMultisig } from '.';
 
 describe('Test Get Username From Tx', () => {
   it('should return username from transfer operation', () => {
@@ -21,7 +21,7 @@ describe('Test Get Username From Tx', () => {
         ] as TransferOperation,
       ],
     };
-    expect(HiveMultisigSDK.getUsernameFromTransaction(tx)).toBe('hi');
+    expect(HiveMultisig.getUsernameFromTransaction(tx)).toBe('hi');
   });
 
   it('should return username from two operations', () => {
@@ -51,7 +51,7 @@ describe('Test Get Username From Tx', () => {
         ] as VoteOperation,
       ],
     };
-    expect(HiveMultisigSDK.getUsernameFromTransaction(tx)).toBe('hi');
+    expect(HiveMultisig.getUsernameFromTransaction(tx)).toBe('hi');
   });
 
   it('should return undefined when two operations have different usernames', () => {
@@ -81,6 +81,6 @@ describe('Test Get Username From Tx', () => {
         ] as VoteOperation,
       ],
     };
-    expect(HiveMultisigSDK.getUsernameFromTransaction(tx)).toBe(undefined);
+    expect(HiveMultisig.getUsernameFromTransaction(tx)).toBe(undefined);
   });
 });
