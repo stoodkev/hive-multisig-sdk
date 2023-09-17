@@ -88,7 +88,7 @@ export class HiveMultisig {
   window: Window;
   options?: MultisigOptions;
   keychain: KeychainSDK;
-  socket: io.Socket;
+  static socket: io.Socket;
 
   constructor(window: Window, options?: MultisigOptions) {
     this.window = window;
@@ -102,9 +102,9 @@ export class HiveMultisig {
     } else {
       this.options = options;
     }
-    this.socket = io.connect(this.options.socketAddress);
-    this.socket.on('connect', () => {
-      console.log(`Socket Connected with ID: ${this.socket.id}`);
+    HiveMultisig.socket = io.connect(this.options.socketAddress);
+    HiveMultisig.socket.on('connect', () => {
+      console.log(`Socket Connected with ID: ${HiveMultisig.socket.id}`);
     });
   }
 
@@ -116,6 +116,14 @@ export class HiveMultisig {
       HiveMultisig.instance = new HiveMultisig(window, options);
     }
     return HiveMultisig.instance;
+  }
+
+  public static resetInstance( window: Window,
+    options?: MultisigOptions): HiveMultisig {
+    HiveMultisig.socket.disconnect();
+    HiveMultisig.instance = new HiveMultisig(window, options);
+    return HiveMultisig.instance;
+
   }
 
   api = {
@@ -196,7 +204,7 @@ export class HiveMultisig {
             }
           }
           if (data.message) {
-            this.socket.emit(
+            HiveMultisig.socket.emit(
               SocketMessageCommand.SIGNER_CONNECT,
               [data],
               (signerConnectResponse: SignerConnectResponse) => {
@@ -236,7 +244,7 @@ export class HiveMultisig {
     ): Promise<string> => {
       return new Promise(async (resolve, reject) => {
         try {
-          this.socket.emit(
+          HiveMultisig.socket.emit(
             SocketMessageCommand.REQUEST_SIGNATURE,
             message,
             (response: string) => {
@@ -302,7 +310,7 @@ multisig.wss.signTransaction(data)
                 signerId: data.signerId,
                 signatureRequestId: data.signatureRequestId,
               };
-              this.socket.emit(
+              HiveMultisig.socket.emit(
                 SocketMessageCommand.SIGN_TRANSACTION,
                 signTransactionMessage,
                 (response: string[]) => {
@@ -371,7 +379,7 @@ multisig.signTransaction(data)
           var message: NotifyTxBroadcastedMessage = {
             signatureRequestId: transaction.signatureRequestId,
           };
-          this.socket.emit(
+          HiveMultisig.socket.emit(
             SocketMessageCommand.NOTIFY_TRANSACTION_BROADCASTED,
             message,
             () => {
@@ -404,7 +412,7 @@ multisig.signTransaction(data)
     ): Promise<boolean> => {
       return new Promise<boolean>((resolve, reject) => {
         try {
-          this.socket.on(
+          HiveMultisig.socket.on(
             SocketMessageCommand.REQUEST_SIGN_TRANSACTION,
             (signatureRequest: SignatureRequest) => {
               callback(signatureRequest);
@@ -437,7 +445,7 @@ multisig.signTransaction(data)
     onBroadcasted: (callback: SignatureRequestCallback): Promise<boolean> => {
       return new Promise<boolean>((resolve, reject) => {
         try {
-          this.socket.on(
+          HiveMultisig.socket.on(
             SocketMessageCommand.TRANSACTION_BROADCASTED_NOTIFICATION,
             (signatureRequest: SignatureRequest) => {
               callback(signatureRequest);
