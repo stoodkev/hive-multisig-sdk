@@ -118,12 +118,13 @@ export class HiveMultisig {
     return HiveMultisig.instance;
   }
 
-  public static resetInstance( window: Window,
-    options?: MultisigOptions): HiveMultisig {
+  public static resetInstance(
+    window: Window,
+    options?: MultisigOptions,
+  ): HiveMultisig {
     HiveMultisig.socket.disconnect();
     HiveMultisig.instance = new HiveMultisig(window, options);
     return HiveMultisig.instance;
-
   }
 
   api = {
@@ -466,32 +467,6 @@ multisig.signTransaction(data)
 
   utils = {
     /**
-     * @description
-     * A function tha returns the list of potential signers' public key and weight
-     *
-     * @param username
-     * @param keyType the transaction key type or method
-     * @returns [string,number][] List of publicKey with corresponding weight
-     */
-    getSigners: async (
-      username: string,
-      keyType: KeychainKeyTypes,
-    ): Promise<[string, number][]> => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          let signers: [string, number][] = [];
-          signers = await HiveUtils.getPotentialSigners(username, keyType);
-          if (signers.length === 0) {
-            reject(`${username} not found`);
-          }
-          resolve(signers);
-        } catch (error: any) {
-          reject(
-            new Error('error occured during getSigners: ' + error.message),
-          );
-        }
-      });
-    } /**
     * @description
     * Encodes the transaction data using the keychain. 
     * @param data The object containing transaction encoding details.
@@ -508,7 +483,7 @@ multisig.signTransaction(data)
          };
          const encodedTxObj = await multisig.utils.encodeTransaction(txEncode);
          console.log(encodedTxObj);
-     */,
+     */
     encodeTransaction: (
       data: IEncodeTransaction,
     ): Promise<RequestSignatureMessage> => {
@@ -789,7 +764,7 @@ multisig.signTransaction(data)
    * @returnsA username if a single one is found, undefined if the tx is badly formatted or if two different signers are needed.
    * Abort operations in these cases.
    */
-  static getUsernameFromTransaction = (tx: Transaction) => {
+  private static getUsernameFromTransaction = (tx: Transaction) => {
     let username;
     if (!tx.operations || !tx.operations.length) return;
     for (const op of tx.operations) {
@@ -958,4 +933,32 @@ multisig.signTransaction(data)
     }
     return username;
   };
+
+  /**
+   * @description
+   * A function tha returns the list of potential signers' public key and weight
+   *
+   * @param username
+   * @param keyType the transaction key type or method
+   * @returns [string,number][] List of publicKey with corresponding weight
+   */
+  static getSigners = async (
+    username: string,
+    keyType: KeychainKeyTypes,
+  ): Promise<[string, number][]> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        let signers: [string, number][] = [];
+        signers = await HiveUtils.getPotentialSigners(username, keyType);
+        if (signers.length === 0) {
+          reject(`${username} not found`);
+        }
+        resolve(signers);
+      } catch (error: any) {
+        reject(new Error('error occured during getSigners: ' + error.message));
+      }
+    });
+  };
 }
+
+HiveMultisig.getAuthorities;
