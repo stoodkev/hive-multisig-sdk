@@ -756,6 +756,21 @@ multisig.signTransaction(data)
     return undefined;
   };
 
+  static get2FASigners = async (
+    transaction: Transaction,
+    method: KeychainKeyTypes,
+  ) => {
+    const broadcaster = HiveMultisig.getUsernameFromTransaction(transaction);
+    if (broadcaster) {
+      let potentialSigners: [string, number][] =
+        await HiveUtils.getPotentialSigners(broadcaster.toString(), method);
+      if (potentialSigners.length === 0) {
+        return [];
+      }
+      return HiveUtils.get2FABots(potentialSigners);
+    }
+  };
+
   /**
    * @description
    * Get the username that will request the broadcast of a given tx
