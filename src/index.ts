@@ -67,11 +67,13 @@ import {
   NotifyTxBroadcastedMessage,
   RequestSignatureMessage,
   RequestSignatureSigner,
+  RequestSignatureSignerMetadata,
   SignTransactionMessage,
   SignatureRequestCallback,
   SignerConnectMessage,
   SignerConnectResponse,
   SocketMessageCommand,
+  TwoFACodes,
 } from './interfaces/socket-message-interface';
 import { HiveUtils, getPublicKeys } from './utils/hive.utils';
 
@@ -486,6 +488,7 @@ multisig.signTransaction(data)
      */
     encodeTransaction: (
       data: IEncodeTransaction,
+      twoFACodes?: any,
     ): Promise<RequestSignatureMessage> => {
       return new Promise<RequestSignatureMessage>(async (resolve, reject) => {
         try {
@@ -535,10 +538,19 @@ multisig.signTransaction(data)
                 const encodedTx = JSON.parse(resultString);
                 for (let i = 0; i < potentialSigners.length; i++) {
                   var result = encodedTx[potentialSigners[i][0]];
+                  var metaData = twoFACodes
+                    ? await HiveMultisig.getMetadata(
+                        twoFACodes,
+                        potentialSigners[i][0],
+                        data.method,
+                        this.keychain,
+                      )
+                    : undefined;
                   var signer: RequestSignatureSigner = {
                     encryptedTransaction: result,
                     publicKey: potentialSigners[i][0],
                     weight: potentialSigners[i][1].toString(),
+                    metaData: metaData,
                   };
                   signerList.push(signer);
                 }
@@ -673,8 +685,58 @@ multisig.signTransaction(data)
         }
       });
     },
+
+    /**
+     * @description
+     * Looks for the assigned 2FA Bots
+     * @param transaction Unencoded transaction object
+     * @param method Transaction method
+     * @returns The list of username and weight of the assigned 2FA Bot
+     */
+    get2FASigners: async (
+      transaction: Transaction,
+      method: KeychainKeyTypes,
+    ) => {
+      const broadcaster = HiveMultisig.getUsernameFromTransaction(transaction);
+      if (!broadcaster) {
+        return [];
+      }
+      return HiveUtils.get2FABots(broadcaster.toString(), method);
+    },
   };
 
+  static getMetadata = async (
+    twoFACodes: any,
+    publicKey: string,
+    method: KeychainKeyTypes,
+    keychain: any,
+  ): Promise<RequestSignatureSignerMetadata | undefined> => {
+    try {
+      const botName = await HiveUtils.getKeyReferences(publicKey);
+      if (twoFACodes[botName]) {
+        let twoFa: TwoFACodes = {};
+        let metadata: RequestSignatureSignerMetadata = { twoFACodes: {} };
+
+        const encodingResult = await keychain.encodeWithKeys({
+          username: botName,
+          publicKeys: [publicKey],
+          message: `#${twoFACodes[botName]}`,
+          method: method,
+        });
+
+        if (encodingResult.success && encodingResult.result) {
+          const resultString = JSON.stringify(encodingResult.result);
+          const encodedMessage = JSON.parse(resultString);
+          twoFa[botName] = encodedMessage[publicKey];
+          metadata.twoFACodes = twoFa;
+          return metadata;
+        }
+      }
+      return undefined;
+    } catch (e) {
+      undefined;
+    }
+  };
   /**
    * @description Validate if the initiator has authority over the account in the transaction
    * @param initiator
@@ -754,21 +816,6 @@ multisig.signTransaction(data)
       }
     }
     return undefined;
-  };
-
-  static get2FASigners = async (
-    transaction: Transaction,
-    method: KeychainKeyTypes,
-  ) => {
-    const broadcaster = HiveMultisig.getUsernameFromTransaction(transaction);
-    if (broadcaster) {
-      let potentialSigners: [string, number][] =
-        await HiveUtils.getPotentialSigners(broadcaster.toString(), method);
-      if (potentialSigners.length === 0) {
-        return [];
-      }
-      return HiveUtils.get2FABots(potentialSigners);
-    }
   };
 
   /**

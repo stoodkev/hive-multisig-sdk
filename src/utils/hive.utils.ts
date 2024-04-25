@@ -1,4 +1,5 @@
 import {
+  AccountsByKey,
   Authority,
   Client,
   PublicKey,
@@ -7,7 +8,7 @@ import {
 } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { Authorities } from '../interfaces/signer';
-import { get } from 'https';
+import { TwoFACodes } from '../interfaces/socket-message-interface';
 
 let hiveClient: Client;
 
@@ -54,6 +55,15 @@ const getThreshold = async (username: string, keyType: KeychainKeyTypes) => {
   }
   return undefined;
 };
+
+const getKeyReferences = async (publicKey: string) => {
+  var client = getClient();
+  const reference: AccountsByKey = await client.keys.getKeyReferences([
+    publicKey,
+  ]);
+  return reference.accounts[0][0];
+};
+
 
 const getAuthorityWeightOverUser = async (
   authority: string | PublicKey,
@@ -138,17 +148,39 @@ const getPublicKey = async (username: string, keyType: KeychainKeyTypes) => {
     throw Error(`Cannot find public key for ${username}`);
   }
 };
-const get2FABots = async (potentialSigners: [string, number][]) => {
-  const results = await Promise.all(
-    potentialSigners.map(async (signer) => {
-      const account = await HiveUtils.getAccount(signer[0]);
-      const jsonMetadata = JSON.parse(account[0]['json_metadata']);
-      const isMultisigBot = jsonMetadata?.isMultisigBot === true;
-      return isMultisigBot ? signer : null;
-    }),
-  );
+const get2FABots = async (username: string, method: KeychainKeyTypes) => {
+  const authorities = await getAccountAuthorities(username);
+  let bots: [string, number][] = [];
+  const authority =
+    method === KeychainKeyTypes.active
+      ? authorities?.active
+      : authorities?.posting;
+  if (!authority) {
+    return bots;
+  }
 
-  return results.filter((result) => result !== null);
+  for (let i = 0; i < authority.account_auths.length; i++) {
+    const auth = authority.account_auths[i];
+    const account = await HiveUtils.getAccount(auth[0]);
+    const jsonMetadata = JSON.parse(account[0]['json_metadata']);
+    const isMultisigBot = jsonMetadata?.isMultisigBot === true;
+    if (isMultisigBot) {
+      bots = bots.concat([auth]);
+    }
+  }
+  return bots;
+  // const results = await Promise.all(
+  //   potentialSigners.map(async (signer) => {
+  //     if (signer[0].includes('STM')) return null;
+  //     const account = await HiveUtils.getAccount(signer[0]);
+  //     console.log(JSON.stringify(account));
+  //     const jsonMetadata = JSON.parse(account[0]['json_metadata']);
+  //     const isMultisigBot = jsonMetadata?.isMultisigBot === true;
+  //     return isMultisigBot ? signer : null;
+  //   }),
+  // );
+
+  // return results.filter((result) => result !== null);
 };
 const getPotentialSigners = async (
   username: string,
@@ -179,7 +211,6 @@ const getPotentialSigners = async (
 
   return receivers;
 };
-
 export const HiveUtils = {
   getClient,
   getAccount,
@@ -191,4 +222,5 @@ export const HiveUtils = {
   getThreshold,
   getAuthorityWeightOverUser,
   get2FABots,
+  getKeyReferences,
 };

@@ -85,8 +85,12 @@ export interface RequestSignatureSigner {
   encryptedTransaction: string; // Encrypted transaction with signer key
   publicKey: string; // public key of signer
   weight: string;
+  metaData?: RequestSignatureSignerMetadata | undefined;
 }
 
+export interface RequestSignatureSignerMetadata {
+  twoFACodes?: TwoFACodes;
+}
 export interface SignTransactionMessage extends SocketMessagePayload {
   signature: string;
   signerId: number;
@@ -129,4 +133,7 @@ export interface ITransaction {
   username: string;
 }
 
+export interface TwoFACodes {
+  [botName: string]: string;
+}
 export type SignatureRequestCallback = (message: SignatureRequest) => void;
