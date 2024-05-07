@@ -30,6 +30,7 @@ import {
   LimitOrderCreate2Operation,
   LimitOrderCreateOperation,
   PowOperation,
+  PublicKey,
   RecoverAccountOperation,
   RecurrentTransferOperation,
   RemoveProposalOperation,
@@ -38,6 +39,7 @@ import {
   ResetAccountOperation,
   SetResetAccountOperation,
   SetWithdrawVestingRouteOperation,
+  Signature,
   SignedTransaction,
   Transaction,
   TransactionConfirmation,
@@ -51,6 +53,7 @@ import {
   WithdrawVestingOperation,
   WitnessSetPropertiesOperation,
   WitnessUpdateOperation,
+  cryptoUtils,
 } from '@hiveio/dhive';
 import axios from 'axios';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
@@ -197,12 +200,35 @@ export class HiveMultisig {
               method: data.keyType,
             } as SignBuffer);
             if (signBuffer.success) {
+              let publicKey = signBuffer.publicKey
+                ? signBuffer.publicKey.toString()
+                : '';
+              if (publicKey.startsWith('@')) {
+                const authorizedUsername = publicKey.replace('@', '');
+                const authorizedUsernameAccount = await HiveUtils.getAccount(
+                  authorizedUsername,
+                );
+                const keys =
+                  authorizedUsernameAccount[
+                    data.keyType.toLowerCase() as 'posting' | 'active'
+                  ].key_auths;
+                console.log('keys', keys);
+                const key = keys.filter((keyObject) => {
+                  const pubKey = PublicKey.fromString(keyObject[0] as string);
+                  const message = cryptoUtils.sha256(data.username);
+                  //@ts-ignore
+                  const signature = Signature.fromString(signBuffer.result);
+
+                  const verification = pubKey.verify(message, signature);
+                  console.log(verification);
+                  return verification;
+                })[0];
+                if (key) publicKey = key[0].toString();
+              }
               data = {
                 ...data,
                 message: JSON.stringify(signBuffer.result).replace(/"/g, ''),
-                publicKey: signBuffer.publicKey
-                  ? signBuffer.publicKey.toString()
-                  : '',
+                publicKey,
               };
             }
           }
@@ -796,18 +822,18 @@ multisig.signTransaction(data)
     if (authorities) {
       switch (keyType) {
         case KeychainKeyTypes.active:
-          for (const [acc, weight] of authorities[0].active.account_auths) {
+          for (const [acc, weight] of authorities.active.account_auths) {
             auths.push([acc, weight]);
           }
-          for (const [key, weight] of authorities[0].active.key_auths) {
+          for (const [key, weight] of authorities.active.key_auths) {
             auths.push([key.toString(), weight]);
           }
           return auths;
         case KeychainKeyTypes.posting:
-          for (const [acc, weight] of authorities[0].posting.account_auths) {
+          for (const [acc, weight] of authorities.posting.account_auths) {
             auths.push([acc, weight]);
           }
-          for (const [key, weight] of authorities[0].posting.key_auths) {
+          for (const [key, weight] of authorities.posting.key_auths) {
             auths.push([key.toString(), weight]);
           }
           return auths;

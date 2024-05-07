@@ -1,14 +1,11 @@
 import {
   AccountsByKey,
-  Authority,
   Client,
   PublicKey,
   SignedTransaction,
-  Transaction,
 } from '@hiveio/dhive';
 import { KeychainKeyTypes } from 'hive-keychain-commons';
 import { Authorities } from '../interfaces/signer';
-import { TwoFACodes } from '../interfaces/socket-message-interface';
 
 let hiveClient: Client;
 
@@ -25,20 +22,20 @@ const getClient = () => {
 };
 const getAccount = async (username: string) => {
   var client = getClient();
-  return client.database.getAccounts([username]);
+  return (await client.database.getAccounts([username]))[0];
 };
 const getAccountAuthorities = async (username: string) => {
   const account = await getAccount(username);
-  if (!account || account.length === 0) {
+  if (!account) {
     return undefined;
   }
   const keys: Authorities = {
-    account: account[0].name,
-    owner: account[0].owner,
-    active: account[0].active,
-    posting: account[0].posting,
-    memo_key: account[0].memo_key,
-    json_metadata: account[0].json_metadata,
+    account: account.name,
+    owner: account.owner,
+    active: account.active,
+    posting: account.posting,
+    memo_key: account.memo_key,
+    json_metadata: account.json_metadata,
   };
   return keys;
 };
@@ -63,7 +60,6 @@ const getKeyReferences = async (publicKey: string) => {
   ]);
   return reference.accounts[0][0];
 };
-
 
 const getAuthorityWeightOverUser = async (
   authority: string | PublicKey,
@@ -115,11 +111,11 @@ export const getPublicKeys = async (
   if (authorities) {
     switch (keyType) {
       case KeychainKeyTypes.active:
-        return authorities[0].active.key_auths.map((key) => {
+        return authorities.active.key_auths.map((key) => {
           return key[0];
         });
       case KeychainKeyTypes.posting:
-        return authorities[0].posting.key_auths.map((key) => {
+        return authorities.posting.key_auths.map((key) => {
           return key[0];
         });
       default:
@@ -140,9 +136,9 @@ const getPublicKey = async (username: string, keyType: KeychainKeyTypes) => {
   try {
     switch (keyType) {
       case KeychainKeyTypes.posting:
-        return account[0].posting.key_auths[0][0];
+        return account.posting.key_auths[0][0];
       case KeychainKeyTypes.active:
-        return account[0].active.key_auths[0][0];
+        return account.active.key_auths[0][0];
     }
   } catch {
     throw Error(`Cannot find public key for ${username}`);
@@ -162,7 +158,7 @@ const get2FABots = async (username: string, method: KeychainKeyTypes) => {
   for (let i = 0; i < authority.account_auths.length; i++) {
     const auth = authority.account_auths[i];
     const account = await HiveUtils.getAccount(auth[0]);
-    const jsonMetadata = JSON.parse(account[0]['json_metadata']);
+    const jsonMetadata = JSON.parse(account['json_metadata']);
     const isMultisigBot = jsonMetadata?.isMultisigBot === true;
     if (isMultisigBot) {
       bots = bots.concat([auth]);
