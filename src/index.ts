@@ -744,7 +744,6 @@ multisig.signTransaction(data)
       if (twoFACodes[botName]) {
         let twoFa: TwoFACodes = {};
         let metadata: RequestSignatureSignerMetadata = { twoFACodes: {} };
-        console.log('username', username);
         const encodingResult = await keychain.encodeWithKeys({
           username,
           publicKeys: [publicKey],
