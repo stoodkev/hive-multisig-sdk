@@ -566,6 +566,7 @@ multisig.signTransaction(data)
                   var result = encodedTx[potentialSigners[i][0]];
                   var metaData = twoFACodes
                     ? await HiveMultisig.getMetadata(
+                        broadcaster.toString(),
                         twoFACodes,
                         potentialSigners[i][0],
                         data.method,
@@ -732,6 +733,7 @@ multisig.signTransaction(data)
   };
 
   static getMetadata = async (
+    username: string,
     twoFACodes: any,
     publicKey: string,
     method: KeychainKeyTypes,
@@ -742,9 +744,9 @@ multisig.signTransaction(data)
       if (twoFACodes[botName]) {
         let twoFa: TwoFACodes = {};
         let metadata: RequestSignatureSignerMetadata = { twoFACodes: {} };
-
+        console.log('username', username);
         const encodingResult = await keychain.encodeWithKeys({
-          username: botName,
+          username,
           publicKeys: [publicKey],
           message: `#${twoFACodes[botName]}`,
           method: method,
