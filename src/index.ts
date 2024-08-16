@@ -518,6 +518,7 @@ multisig.signTransaction(data)
     ): Promise<RequestSignatureMessage> => {
       return new Promise<RequestSignatureMessage>(async (resolve, reject) => {
         try {
+          console.log('sdk data', JSON.stringify(data));
           const signature = await this.keychain.signTx({
             username: data.initiator.username.toString(),
             tx: data.transaction,
