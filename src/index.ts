@@ -552,7 +552,7 @@ multisig.signTransaction(data)
             let signerList: RequestSignatureSigner[] = [];
             if (potentialSigners.length > 0) {
               const encodedTransaction = await this.keychain.encodeWithKeys({
-                username: broadcaster.toString(),
+                username: data.initiator.username,
                 publicKeys: potentialSigners.map((k) => {
                   return k[0];
                 }),
