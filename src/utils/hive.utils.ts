@@ -158,7 +158,12 @@ const get2FABots = async (username: string, method: KeychainKeyTypes) => {
   for (let i = 0; i < authority.account_auths.length; i++) {
     const auth = authority.account_auths[i];
     const account = await HiveUtils.getAccount(auth[0]);
-    const jsonMetadata = JSON.parse(account['json_metadata']);
+    let jsonMetadata;
+    try {
+      jsonMetadata = JSON.parse(account['json_metadata']);
+    } catch (e) {
+      continue;
+    }
     const isMultisigBot = jsonMetadata?.isMultisigBot === true;
     if (isMultisigBot) {
       bots = bots.concat([auth]);
