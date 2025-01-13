@@ -854,7 +854,7 @@ multisig.signTransaction(data)
    * @returnsA username if a single one is found, undefined if the tx is badly formatted or if two different signers are needed.
    * Abort operations in these cases.
    */
-  private static getUsernameFromTransaction = (tx: Transaction) => {
+  static getUsernameFromTransaction = (tx: Transaction) => {
     let username;
     if (!tx.operations || !tx.operations.length) return;
     for (const op of tx.operations) {
